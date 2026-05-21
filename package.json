@@ -68,7 +68,30 @@
           "description": "Render plantuml fences via Beauty Diagram. (VS Code has no built-in plantuml renderer.)"
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "beautyDiagram.injectCurrentFile",
+        "title": "Beauty Diagram: Inject embed URLs in current file"
+      },
+      {
+        "command": "beautyDiagram.injectWorkspace",
+        "title": "Beauty Diagram: Inject embed URLs in workspace"
+      },
+      {
+        "command": "beautyDiagram.cleanWorkspace",
+        "title": "Beauty Diagram: Clean orphan embed URLs in workspace"
+      },
+      {
+        "command": "beautyDiagram.verifyApiKey",
+        "title": "Beauty Diagram: Verify API key"
+      },
+      {
+        "command": "beautyDiagram.openInEditor",
+        "title": "Beauty Diagram: Open block in editor (internal)",
+        "enablement": "false"
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.config.mjs production",
