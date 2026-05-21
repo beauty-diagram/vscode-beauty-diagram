@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.14 — 2026-05-21
+
+### Fixes
+
+- **share-mode**: read mode from tokens instead of env (VS Code uses split envs)
+
 ## 0.1.13 — 2026-05-21
 
 ### Fixes
