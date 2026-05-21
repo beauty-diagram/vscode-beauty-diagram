@@ -1,7 +1,40 @@
-import type * as vscode from 'vscode'
+import * as vscode from 'vscode'
+import type MarkdownIt from 'markdown-it'
+import { bdMarkdownItPlugin } from './src/markdown-it-plugin'
+import { BdCodeLensProvider } from './src/codelens-provider'
+import { registerCommands } from './src/commands'
+import { createApiClient } from './src/api-client'
+import { ShareCache } from './src/share-cache'
+import { getConfig } from './src/settings'
 
-export function activate(_context: vscode.ExtensionContext) {
-  // Wired up in later tasks.
+const PLUGIN_VERSION = '0.1.0'
+
+export function activate(context: vscode.ExtensionContext): {
+  extendMarkdownIt(md: MarkdownIt): MarkdownIt
+} {
+  const cache = new ShareCache(context.globalState)
+  const api = createApiClient({
+    apiBase: getConfig('apiBase'),
+    apiKey: getConfig('apiKey') || null,
+    version: PLUGIN_VERSION,
+  })
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'markdown' },
+      new BdCodeLensProvider(),
+    ),
+  )
+
+  registerCommands(context, api, cache)
+
+  return {
+    extendMarkdownIt(md: MarkdownIt): MarkdownIt {
+      return md.use(bdMarkdownItPlugin)
+    },
+  }
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+  // VS Code disposes registered subscriptions automatically.
+}
