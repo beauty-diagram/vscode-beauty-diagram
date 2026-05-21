@@ -24,9 +24,7 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "markdown": {
-      "markdownItPlugins": true
-    },
+    "markdown.markdownItPlugins": true,
     "configuration": {
       "title": "Beauty Diagram",
       "properties": {
