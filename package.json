@@ -10,7 +10,39 @@
   "activationEvents": ["onLanguage:markdown"],
   "main": "./dist/extension.js",
   "contributes": {
-    "markdown": { "markdownItPlugins": true }
+    "markdown": { "markdownItPlugins": true },
+    "configuration": {
+      "title": "Beauty Diagram",
+      "properties": {
+        "beautyDiagram.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Optional API key. Anonymous renders are watermarked. Get a key at https://www.beauty-diagram.com/account/api-keys",
+          "scope": "machine"
+        },
+        "beautyDiagram.apiBase": {
+          "type": "string",
+          "default": "https://api.beauty-diagram.com",
+          "description": "Override for self-hosting or development."
+        },
+        "beautyDiagram.defaultTheme": {
+          "type": "string",
+          "enum": ["classic", "modern", "slate", "atlas", "obsidian", "brutalist", "atelier", "blueprint", "memphis"],
+          "default": "classic",
+          "description": "Default theme for blocks without an inline directive."
+        },
+        "beautyDiagram.replaceMermaid": {
+          "type": "boolean",
+          "default": true,
+          "description": "Replace built-in mermaid render in Markdown Preview with Beauty Diagram."
+        },
+        "beautyDiagram.handlePlantuml": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render plantuml fences via Beauty Diagram. (VS Code has no built-in plantuml renderer.)"
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node esbuild.config.mjs production",
