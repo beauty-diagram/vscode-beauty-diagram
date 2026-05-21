@@ -1,0 +1,39 @@
+{
+  "name": "beauty-diagram",
+  "displayName": "Beauty Diagram",
+  "description": "Beautify Mermaid and PlantUML in VS Code Markdown Preview — 9 deck-ready themes, dark-mode friendly, no setup.",
+  "version": "0.1.0",
+  "publisher": "beauty-diagram",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Visualization", "Other"],
+  "keywords": ["mermaid", "plantuml", "diagram", "themes", "preview", "markdown"],
+  "activationEvents": ["onLanguage:markdown"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "markdown": { "markdownItPlugins": true }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs production",
+    "dev": "node esbuild.config.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "package": "vsce package",
+    "publish:vsce": "vsce publish",
+    "publish:ovsx": "ovsx publish"
+  },
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/beauty-diagram/vscode-beauty-diagram" },
+  "homepage": "https://www.beauty-diagram.com",
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.0",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.20.0",
+    "ovsx": "^0.10.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "dependencies": {}
+}
