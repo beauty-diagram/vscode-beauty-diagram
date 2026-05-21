@@ -9,3 +9,4 @@ esbuild.config.mjs
 vitest.config.ts
 **/*.map
 **/*.ts
+scripts/**
