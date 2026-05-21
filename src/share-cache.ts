@@ -1,4 +1,4 @@
-import { shortHash } from './hash'
+import { shortHash, shortHashSync } from './hash'
 import type { SourceFormat } from './types'
 
 interface CacheRow {
@@ -90,4 +90,47 @@ export class ShareCache {
   async clear(): Promise<void> {
     await this.memento.update(STORAGE_KEY, [])
   }
+
+  /**
+   * Synchronous lookup for the markdown-it fence rule. Fence runs in the
+   * extension host (Node) and cannot await — we precompute the same key
+   * derivation using node:crypto and read Memento (which is itself sync).
+   * Mirrors `get` semantics: expired entries return null.
+   *
+   * Must produce byte-identical keys to `makeKey()`, otherwise async
+   * writes from the toggle command's pre-fetch step won't be visible to
+   * synchronous reads from fence rule. The two functions share their
+   * input shape (source / theme / format / ownerTag) for this reason.
+   */
+  getSync(
+    source: string,
+    theme: string,
+    type: SourceFormat,
+    ownerTag = 'anon',
+  ): string | null {
+    const key = makeKeySync(source, theme, type, ownerTag)
+    const rows = this.readAll()
+    const row = rows.find((r) => r.key === key)
+    if (!row) return null
+    if (row.expiresAt < Date.now()) return null
+    return row.id
+  }
+}
+
+/**
+ * Sync mirror of ShareCache.makeKey — kept as a free function so both
+ * paths (async makeKey via shortHash, sync makeKey via shortHashSync)
+ * use the same shape. Two shortHash calls + the exact same concatenation
+ * order, otherwise async-write/sync-read combos miss.
+ */
+function makeKeySync(
+  source: string,
+  theme: string,
+  type: SourceFormat,
+  ownerTag: string,
+): string {
+  return (
+    shortHashSync(ownerTag + '\0' + source + '\0' + theme + '\0' + type) +
+    shortHashSync('\x01' + ownerTag + source + theme + type)
+  )
 }

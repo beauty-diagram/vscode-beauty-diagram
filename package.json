@@ -85,6 +85,10 @@
         "title": "Beauty Diagram: Verify API key"
       },
       {
+        "command": "beautyDiagram.toggleShareMode",
+        "title": "Beauty Diagram: Toggle share mode for this page"
+      },
+      {
         "command": "beautyDiagram.openInEditor",
         "title": "Beauty Diagram: Open block in editor (internal)",
         "enablement": "false"

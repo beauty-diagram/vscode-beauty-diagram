@@ -29,6 +29,33 @@ export interface ThemeInfo {
   tier: string
 }
 
+/**
+ * Server response from GET /v1/usage. Mirrors obsidian-beauty-diagram's
+ * UsageResponse byte-for-byte — the shape is server-side and consumed
+ * identically by both plugins. See docs/architecture/share-mechanism.md
+ * in the monorepo for the canonical reference.
+ */
+export interface UsageResponse {
+  ok: boolean
+  /** 'free' | 'pro' | 'premium' today; loose for forward compatibility. */
+  plan: string
+  actor?: string
+  exports?: {
+    plan?: string
+    used: number
+    /** null on Premium (unlimited). Free / Pro return a numeric cap. */
+    limit: number | null
+    resetsAt: string
+  }
+  ai?: {
+    enabled?: boolean
+    used: number
+    /** null on Premium (unlimited). */
+    limit: number | null
+    resetsAt: string
+  }
+}
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
     super(message)
@@ -38,7 +65,7 @@ export class ApiError extends Error {
 export interface ApiClient {
   createShare(input: ShareInput): Promise<ShareResult>
   getThemes(): Promise<ThemeInfo[]>
-  getUsage(): Promise<unknown>
+  getUsage(): Promise<UsageResponse>
 }
 
 export function createApiClient(opts: ApiClientOptions): ApiClient {
@@ -82,6 +109,6 @@ export function createApiClient(opts: ApiClientOptions): ApiClient {
       const r = await request<{ themes: ThemeInfo[] }>('GET', '/v1/themes')
       return r.themes
     },
-    getUsage: () => request<unknown>('GET', '/v1/usage'),
+    getUsage: () => request<UsageResponse>('GET', '/v1/usage'),
   }
 }

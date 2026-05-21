@@ -1,7 +1,28 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import MarkdownIt from 'markdown-it'
-import { bdMarkdownItPlugin } from '../src/markdown-it-plugin'
+import { bdMarkdownItPlugin, setBdShareContext } from '../src/markdown-it-plugin'
+import { ShareCache } from '../src/share-cache'
+import { shortHashSync } from '../src/hash'
 import * as vscode from 'vscode'
+
+class FakeMemento {
+  private store = new Map<string, unknown>()
+  get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.store.has(key) ? this.store.get(key) : defaultValue) as T | undefined
+  }
+  update(key: string, value: unknown): Thenable<void> {
+    if (value === undefined) this.store.delete(key)
+    else this.store.set(key, value)
+    return Promise.resolve()
+  }
+  keys(): readonly string[] {
+    return Array.from(this.store.keys())
+  }
+}
+
+afterEach(() => {
+  setBdShareContext(null)
+})
 
 function setConfig(overrides: Record<string, unknown>) {
   vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
@@ -75,5 +96,66 @@ describe('bdMarkdownItPlugin', () => {
     const html = md.render('```bash\necho hello\n```')
     expect(html).not.toContain('beautify.svg')
     expect(html).toContain('<pre>')
+  })
+
+  describe('share mode (frontmatter bd-share: true)', () => {
+    const apiBase = 'https://api.beauty-diagram.com'
+
+    it('emits /v1/share/<token>.svg when cache hit and context wired', async () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase, apiKey: 'bd_live_k' })
+      const cache = new ShareCache(new FakeMemento())
+      // markdown-it fence token.content always carries a trailing newline,
+      // so the cache key the fence rule will look up matches the source +
+      // '\n'. The toggle command's pre-fetch step parses the same way, so
+      // this is the canonical key shape for share-mode cache entries.
+      const cleanSource = 'flowchart LR\n  A --> B\n'
+      const ownerTag = shortHashSync('owner:bd_live_k')
+      await cache.set(cleanSource, 'classic', 'mermaid', 'tok_abc', ownerTag)
+
+      setBdShareContext({ cache, getApiKey: () => 'bd_live_k' })
+      const md = new MarkdownIt().use(bdMarkdownItPlugin)
+      const html = md.render('---\nbd-share: true\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```')
+
+      expect(html).toContain('/v1/share/tok_abc.svg')
+      expect(html).toContain('data-bd-mode="share"')
+      expect(html).not.toContain('beautify.svg')
+    })
+
+    it('falls back to anonymous + hint when share mode is on but cache misses', () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase, apiKey: 'bd_live_k' })
+      const cache = new ShareCache(new FakeMemento())
+      setBdShareContext({ cache, getApiKey: () => 'bd_live_k' })
+
+      const md = new MarkdownIt().use(bdMarkdownItPlugin)
+      const html = md.render('---\nbd-share: true\n---\n\n```mermaid\nflowchart LR\n```')
+
+      expect(html).toContain('beautify.svg')   // anonymous fallback
+      expect(html).toContain('Share mode is on')   // hint banner
+      expect(html).toContain('Toggle share mode')
+    })
+
+    it('ignores frontmatter when share context is not wired (defensive)', () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase, apiKey: 'bd_live_k' })
+      // no setBdShareContext — simulates extension not yet activated
+      const md = new MarkdownIt().use(bdMarkdownItPlugin)
+      const html = md.render('---\nbd-share: true\n---\n\n```mermaid\nflowchart LR\n```')
+
+      expect(html).toContain('beautify.svg')   // anonymous only
+      expect(html).not.toContain('Share mode is on')   // no hint without context
+    })
+
+    it('renders anonymously when frontmatter does not opt in to share', () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase, apiKey: 'bd_live_k' })
+      const cache = new ShareCache(new FakeMemento())
+      setBdShareContext({ cache, getApiKey: () => 'bd_live_k' })
+
+      const md = new MarkdownIt().use(bdMarkdownItPlugin)
+      // frontmatter present but bd-share is not true
+      const html = md.render('---\ntitle: Foo\n---\n\n```mermaid\nflowchart LR\n```')
+
+      expect(html).toContain('beautify.svg')
+      expect(html).not.toContain('/v1/share/')
+      expect(html).not.toContain('Share mode is on')
+    })
   })
 })

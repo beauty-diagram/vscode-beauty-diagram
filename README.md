@@ -55,6 +55,31 @@ flowchart LR
 
 For PlantUML, use `' bd:theme=memphis` instead.
 
+### Share mode (Pro+, per-page opt-in)
+
+By default every diagram renders via the anonymous endpoint `/v1/beautify.svg` — fast, no quota, **always watermarked**. This applies to everyone including Pro users.
+
+If you have a Pro or Premium plan, you can opt in **per page** to render diagrams without watermark:
+
+1. Open the markdown file in any view.
+2. Command Palette → **Beauty Diagram: Toggle share mode for this page**.
+3. The extension adds a marker to the page's YAML front-matter:
+
+   ```yaml
+   ---
+   # Beauty Diagram: share-mode (watermark-free preview, consumes share quota per unique diagram).
+   bd-share: true
+   ---
+   ```
+
+4. The extension also pre-fetches share tokens for every fence in the file (1 share quota per unique diagram source). Markdown Preview then renders those fences via `/v1/share/<token>.svg` — no watermark.
+
+**Quota model**: each unique diagram source consumes 1 share quota (Pro: 100/month) on its first toggle. Subsequent toggles on the same source hit the local cache for free.
+
+Run the toggle command again to disable. Free users see an upgrade prompt and no quota is consumed.
+
+> **Implementation note**: unlike Obsidian, VS Code's built-in markdown preview doesn't allow webview-side async messaging back to the extension host (VS Code maintainers explicitly rejected this — see microsoft/vscode#174080 and #248934). So the extension pre-fetches all share tokens at toggle time, and the fence rule reads from the local cache synchronously. If you add a new diagram to a share-mode page, run the toggle command twice (off → on) to re-pre-fetch.
+
 ### Source injection (portable diagrams)
 
 When you commit `.md` files to git and have them rendered on GitHub, Notion, blog static sites, etc., run from Command Palette (`Cmd+Shift+P`):
@@ -71,7 +96,7 @@ Settings → search "beautyDiagram":
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `beautyDiagram.apiKey` | empty | Optional. Anonymous renders are watermarked. Get a key at [beauty-diagram.com/account/api-keys](https://www.beauty-diagram.com/account/api-keys). |
+| `beautyDiagram.apiKey` | empty | Optional. Required for share mode and source injection. Without one, preview renders anonymously (watermarked). Get a key at [beauty-diagram.com/account/api-keys](https://www.beauty-diagram.com/account/api-keys). The **Verify API key** command surfaces your plan + monthly share quota usage. |
 | `beautyDiagram.apiBase` | `https://api.beauty-diagram.com` | Self-host override. |
 | `beautyDiagram.defaultTheme` | `classic` | One of 9 themes; per-block directive overrides. |
 | `beautyDiagram.replaceMermaid` | `true` | Off lets built-in VS Code preview handle mermaid. |
@@ -81,8 +106,9 @@ Settings → search "beautyDiagram":
 
 **This extension makes HTTPS requests to `api.beauty-diagram.com` to render diagrams.** Disclosure:
 
-- **Preview**: every mermaid/plantuml block in Markdown Preview triggers a GET to `/v1/beautify.svg` with source base64-encoded in the URL. Server uses to render; does not persist.
-- **With API key**: `Beauty Diagram: Inject embed URLs` commands POST source to `/v1/share` so it's saved to your Beauty Diagram account and embeddable.
+- **Preview (default)**: every mermaid/plantuml block in Markdown Preview triggers a GET to `/v1/beautify.svg` with source base64-encoded in the URL. Server uses it to render; does not persist.
+- **Share mode (per-page opt-in)**: pages with `bd-share: true` in front-matter trigger `POST /v1/share` using your API key, saving the diagram to your Beauty Diagram account so it can be served without watermark. Without the front-matter marker, the share endpoint is never called.
+- **Source injection command**: deliberate command invocation that uses the same `/v1/share` path as share mode, but writes the resulting URLs into the markdown file so the diagrams render anywhere markdown is read.
 - **Analytics**: `X-Bd-Client: vscode` header in API calls for aggregate health monitoring. No personal data, no telemetry endpoints.
 
 ### Opt-out
