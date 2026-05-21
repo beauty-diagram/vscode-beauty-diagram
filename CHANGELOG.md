@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7 — 2026-05-21
+
+### Fixes
+
+- **changelog**: escape literal \<img\>/\<svg\> tags so vsce package accepts CHANGELOG.md
+
 All notable changes are documented here. Generated from conventional
 commits via `scripts/update-changelog.mjs` on each `npm version` bump.
 
