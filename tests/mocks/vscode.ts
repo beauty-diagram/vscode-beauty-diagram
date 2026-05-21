@@ -72,6 +72,14 @@ export interface TextDocument {
   lineCount: number
 }
 
+export class FakeTextDocument implements TextDocument {
+  languageId = 'markdown'
+  uri = { fsPath: '/fake.md', toString: () => '/fake.md' }
+  constructor(private text: string) {}
+  getText(): string { return this.text }
+  get lineCount(): number { return this.text.split('\n').length }
+}
+
 export interface ExtensionContext {
   globalState: Memento
   subscriptions: { dispose(): void }[]
