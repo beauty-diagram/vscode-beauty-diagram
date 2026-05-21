@@ -18,20 +18,20 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: Package vsix (pre-release)
-        run: npx @vscode/vsce package --pre-release --no-dependencies
+      - name: Package vsix
+        run: npx @vscode/vsce package --no-dependencies
       - name: Publish to VS Code Marketplace
         if: ${{ env.VSCE_PAT != '' }}
         continue-on-error: true
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx @vscode/vsce publish --pre-release --pat "$VSCE_PAT" --no-dependencies
+        run: npx @vscode/vsce publish --pat "$VSCE_PAT" --no-dependencies
       - name: Publish to Open VSX
         if: ${{ env.OVSX_PAT != '' }}
         continue-on-error: true
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx ovsx publish *.vsix --pre-release --pat "$OVSX_PAT"
+        run: npx ovsx publish *.vsix --pat "$OVSX_PAT"
       - name: Upload to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
