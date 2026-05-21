@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12 — 2026-05-21
+
+### Fixes
+
+- **fence**: rollback hover badge wrapper, restore 0.1.8 bare \<img\> output
+
 ## 0.1.11 — 2026-05-21
 
 ### Fixes
