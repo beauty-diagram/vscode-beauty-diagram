@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.10 — 2026-05-21
+
+### Features
+
+- **ux**: withProgress + cancellation for long-running commands
+
 ## 0.1.9 — 2026-05-21
 
 ### Fixes
