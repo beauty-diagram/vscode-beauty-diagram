@@ -101,7 +101,10 @@
     "typecheck": "tsc --noEmit",
     "package": "vsce package",
     "publish:vsce": "vsce publish",
-    "publish:ovsx": "ovsx publish"
+    "publish:ovsx": "ovsx publish",
+    "preversion": "npm run typecheck && npm test && npm run build",
+    "version": "git add package.json",
+    "postversion": "git push --follow-tags origin main"
   },
   "license": "MIT",
   "repository": {
