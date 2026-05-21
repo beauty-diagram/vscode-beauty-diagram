@@ -79,12 +79,12 @@ function renderDiagramBlock(opts: {
     sourceFormat: opts.sourceFormat,
   })
   return (
-    `<span class="bd-block">` +
+    `<div class="bd-block">` +
     `<img class="bd-img" src="${escapeHtml(opts.src)}" alt="${opts.alt}" data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}" />` +
     `<a class="bd-edit-badge" href="${escapeHtml(editUrl)}" target="_blank" rel="noopener noreferrer" ` +
     `aria-label="Open this diagram's source in the Beauty Diagram editor (edits don't sync back to this file)">` +
     `↗ Open in editor</a>` +
-    `</span>\n`
+    `</div>\n`
   )
 }
 

@@ -102,7 +102,7 @@ describe('bdMarkdownItPlugin', () => {
     setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
     const md = new MarkdownIt().use(bdMarkdownItPlugin)
     const html = md.render('```mermaid\nflowchart LR\n  A --> B\n```')
-    expect(html).toContain('<span class="bd-block">')
+    expect(html).toContain('<div class="bd-block">')
     expect(html).toContain('class="bd-edit-badge"')
     expect(html).toContain('beauty-diagram.com/editor')
     expect(html).toContain('target="_blank"')
