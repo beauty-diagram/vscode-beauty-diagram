@@ -66,12 +66,20 @@ const groups = {
   other: [],
 }
 
+// Escape characters that vsce / markdown renderers misinterpret. Literal
+// `<img>` or `<svg>` in prose otherwise get parsed as HTML img/svg tags
+// with no src, which `vsce package` rejects with "Images in CHANGELOG.md
+// must have a source."
+function escapeMd(s) {
+  return s.replace(/</g, '\\<').replace(/>/g, '\\>')
+}
+
 for (const line of lines) {
   const m = line.match(PREFIX_RE)
   if (m && groups[m[1].toLowerCase()]) {
-    groups[m[1].toLowerCase()].push({ scope: extractScope(line), desc: m[2] })
+    groups[m[1].toLowerCase()].push({ scope: extractScope(line), desc: escapeMd(m[2]) })
   } else {
-    groups.other.push({ scope: null, desc: line })
+    groups.other.push({ scope: null, desc: escapeMd(line) })
   }
 }
 

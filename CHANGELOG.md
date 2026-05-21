@@ -1,5 +1,8 @@
 # Changelog
 
+All notable changes are documented here. Generated from conventional
+commits via `scripts/update-changelog.mjs` on each `npm version` bump.
+
 ## 0.1.6 — 2026-05-21
 
 ### Fixes
@@ -13,9 +16,6 @@
 ### Chores
 
 - auto-generate CHANGELOG.md from conventional commits on npm version
-
-All notable changes are documented here. Generated from conventional
-commits via `scripts/update-changelog.mjs` on each `npm version` bump.
 
 ## 0.1.5 — 2026-05-21
 
@@ -60,7 +60,7 @@ commits via `scripts/update-changelog.mjs` on each `npm version` bump.
 - **extension**: wire markdownItPlugin export + CodeLens + commands in activate()
 - **commands**: register 5 commands (inject current/workspace, clean, verify, openInEditor)
 - **codelens-provider**: emit '↗ Open in Beauty Diagram editor' above every mermaid/plantuml fence
-- **markdown-it-plugin**: fence rule override emitting <img> for mermaid/plantuml
+- **markdown-it-plugin**: fence rule override emitting \<img\> for mermaid/plantuml
 - **share-cache**: vscode.Memento-backed LRU + TTL cache for share tokens
 - **api-client**: Node fetch transport with X-Bd-Client: vscode header
 - **settings**: vscode configuration contribution + typed getConfig wrapper

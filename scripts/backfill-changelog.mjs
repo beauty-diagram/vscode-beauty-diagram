@@ -49,12 +49,14 @@ function sectionFor(tag, prevTag) {
 
   const groups = Object.fromEntries(Object.keys(labels).map((k) => [k, []]))
 
+  const esc = (s) => s.replace(/</g, '\\<').replace(/>/g, '\\>')
+
   for (const line of lines) {
     const m = line.match(PREFIX_RE)
     if (m && groups[m[1].toLowerCase()]) {
-      groups[m[1].toLowerCase()].push({ scope: m[2] || null, desc: m[3] })
+      groups[m[1].toLowerCase()].push({ scope: m[2] || null, desc: esc(m[3]) })
     } else {
-      groups.other.push({ scope: null, desc: line })
+      groups.other.push({ scope: null, desc: esc(line) })
     }
   }
 
