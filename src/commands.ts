@@ -102,19 +102,36 @@ export function registerCommands(
         vscode.window.showWarningMessage('Beauty Diagram: open a Markdown file first.')
         return
       }
-      const original = doc.getText()
-      const updated = await injectEmbeds(original, {
-        theme: getConfig('defaultTheme'),
-        hasApiKey: !!getConfig('apiKey'),
-        apiBase: getConfig('apiBase'),
-        shareIdForSource: makeShareIdResolver(),
-      })
-      if (updated === original) {
-        vscode.window.showInformationMessage('Beauty Diagram: no changes needed.')
-        return
-      }
-      await replaceEntireDocument(doc, updated)
-      vscode.window.showInformationMessage('Beauty Diagram: injection done.')
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Beauty Diagram: Injecting embed URLs',
+          cancellable: true,
+        },
+        async (progress, cancel) => {
+          const original = doc.getText()
+          // Inject is a single async op spanning many fences — we can't
+          // easily increment per fence without forking the injection module,
+          // so we show indeterminate progress with a meaningful subtitle.
+          progress.report({ message: doc.uri.path.split('/').pop() ?? 'current file' })
+          const updated = await injectEmbeds(original, {
+            theme: getConfig('defaultTheme'),
+            hasApiKey: !!getConfig('apiKey'),
+            apiBase: getConfig('apiBase'),
+            shareIdForSource: makeCancellableResolver(makeShareIdResolver(), cancel),
+          })
+          if (cancel.isCancellationRequested) {
+            vscode.window.showInformationMessage('Beauty Diagram: injection cancelled.')
+            return
+          }
+          if (updated === original) {
+            vscode.window.showInformationMessage('Beauty Diagram: no changes needed.')
+            return
+          }
+          await replaceEntireDocument(doc, updated)
+          vscode.window.showInformationMessage('Beauty Diagram: injection done.')
+        },
+      )
     }),
 
     vscode.commands.registerCommand('beautyDiagram.injectWorkspace', async () => {
@@ -129,23 +146,40 @@ export function registerCommands(
       )
       if (choice !== 'Run') return
 
-      let touched = 0
-      const resolver = makeShareIdResolver()
-      for (const uri of files) {
-        const bytes = await vscode.workspace.fs.readFile(uri)
-        const original = new TextDecoder().decode(bytes)
-        const updated = await injectEmbeds(original, {
-          theme: getConfig('defaultTheme'),
-          hasApiKey: !!getConfig('apiKey'),
-          apiBase: getConfig('apiBase'),
-          shareIdForSource: resolver,
-        })
-        if (updated !== original) {
-          await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(updated))
-          touched++
-        }
-      }
-      vscode.window.showInformationMessage(`Beauty Diagram: injected in ${touched} / ${files.length} files.`)
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Beauty Diagram: Injecting embed URLs in workspace',
+          cancellable: true,
+        },
+        async (progress, cancel) => {
+          let touched = 0
+          const resolver = makeCancellableResolver(makeShareIdResolver(), cancel)
+          const step = 100 / files.length
+          for (let i = 0; i < files.length; i++) {
+            if (cancel.isCancellationRequested) break
+            const uri = files[i]
+            const rel = vscode.workspace.asRelativePath(uri)
+            progress.report({ message: `${i + 1} / ${files.length} · ${rel}`, increment: step })
+            const bytes = await vscode.workspace.fs.readFile(uri)
+            const original = new TextDecoder().decode(bytes)
+            const updated = await injectEmbeds(original, {
+              theme: getConfig('defaultTheme'),
+              hasApiKey: !!getConfig('apiKey'),
+              apiBase: getConfig('apiBase'),
+              shareIdForSource: resolver,
+            })
+            if (updated !== original) {
+              await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(updated))
+              touched++
+            }
+          }
+          const verb = cancel.isCancellationRequested ? 'partially injected' : 'injected'
+          vscode.window.showInformationMessage(
+            `Beauty Diagram: ${verb} in ${touched} / ${files.length} files.`,
+          )
+        },
+      )
     }),
 
     vscode.commands.registerCommand('beautyDiagram.cleanWorkspace', async () => {
@@ -160,17 +194,32 @@ export function registerCommands(
       )
       if (choice !== 'Run') return
 
-      let touched = 0
-      for (const uri of files) {
-        const bytes = await vscode.workspace.fs.readFile(uri)
-        const original = new TextDecoder().decode(bytes)
-        const cleaned = await cleanEmbeds(original)
-        if (cleaned !== original) {
-          await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(cleaned))
-          touched++
-        }
-      }
-      vscode.window.showInformationMessage(`Beauty Diagram: cleaned ${touched} files.`)
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Beauty Diagram: Cleaning orphan embed URLs',
+          cancellable: true,
+        },
+        async (progress, cancel) => {
+          let touched = 0
+          const step = 100 / files.length
+          for (let i = 0; i < files.length; i++) {
+            if (cancel.isCancellationRequested) break
+            const uri = files[i]
+            const rel = vscode.workspace.asRelativePath(uri)
+            progress.report({ message: `${i + 1} / ${files.length} · ${rel}`, increment: step })
+            const bytes = await vscode.workspace.fs.readFile(uri)
+            const original = new TextDecoder().decode(bytes)
+            const cleaned = await cleanEmbeds(original)
+            if (cleaned !== original) {
+              await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(cleaned))
+              touched++
+            }
+          }
+          const verb = cancel.isCancellationRequested ? 'partially cleaned' : 'cleaned'
+          vscode.window.showInformationMessage(`Beauty Diagram: ${verb} ${touched} files.`)
+        },
+      )
     }),
 
     vscode.commands.registerCommand('beautyDiagram.verifyApiKey', async () => {
@@ -234,7 +283,20 @@ export function registerCommands(
       const updated = setPageShareMode(original, next)
 
       if (next === 'share') {
-        const result = await preFetchShareTokens(deps, original)
+        const result = await vscode.window.withProgress<PreFetchResult>(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: 'Beauty Diagram: Pre-fetching share URLs',
+            cancellable: true,
+          },
+          (progress, cancel) => preFetchShareTokens(deps, original, progress, cancel),
+        )
+        if (result.kind === 'cancelled') {
+          vscode.window.showInformationMessage(
+            `Beauty Diagram: pre-fetch cancelled (${result.fetched} cached, ${result.reused} reused). Share mode not enabled.`,
+          )
+          return
+        }
         if (result.kind === 'error') {
           vscode.window.showErrorMessage(`Beauty Diagram: share-mode pre-fetch failed (${result.message})`)
           return
@@ -281,18 +343,29 @@ interface PreFetchOk {
 interface PreFetchError {
   kind: 'error'
   message: string
+  fetched: number
+  reused: number
 }
-type PreFetchResult = PreFetchOk | PreFetchError
+interface PreFetchCancelled {
+  kind: 'cancelled'
+  fetched: number
+  reused: number
+}
+type PreFetchResult = PreFetchOk | PreFetchError | PreFetchCancelled
 
 /**
  * Walk every mermaid/plantuml fence in the document, mint a share token
  * for each (or reuse a cached one), and write to ShareCache so the fence
- * rule can find it synchronously on the next render. Stops on first
- * server error so we don't burn quota mid-failure.
+ * rule can find it synchronously on the next render. Reports granular
+ * per-fence progress + respects cancellation so the user can bail out of
+ * a large pre-fetch mid-flight (any tokens already minted stay in cache,
+ * not wasted).
  */
 async function preFetchShareTokens(
   deps: CommandDeps,
   document: string,
+  progress?: vscode.Progress<{ message?: string; increment?: number }>,
+  cancel?: vscode.CancellationToken,
 ): Promise<PreFetchResult> {
   const apiKey = getConfig('apiKey') || ''
   const defaultTheme = getConfig('defaultTheme') as string
@@ -301,18 +374,27 @@ async function preFetchShareTokens(
   // Parse with the same markdown-it the preview uses so we see exactly
   // the same fence token.content as fence rule will see at render time.
   const md = new MarkdownIt()
-  const tokens = md.parse(document, {})
+  const allTokens = md.parse(document, {})
+  const fences = allTokens.filter((t) => {
+    if (t.type !== 'fence') return false
+    const info = (t.info || '').trim().toLowerCase()
+    return info === 'mermaid' || info === 'plantuml'
+  })
 
   let fetched = 0
   let reused = 0
+  const step = fences.length > 0 ? 100 / fences.length : 100
 
-  for (const tok of tokens) {
-    if (tok.type !== 'fence') continue
-    const info = (tok.info || '').trim().toLowerCase()
-    if (info !== 'mermaid' && info !== 'plantuml') continue
-    const sourceFormat = info as SourceFormat
+  for (let i = 0; i < fences.length; i++) {
+    if (cancel?.isCancellationRequested) {
+      return { kind: 'cancelled', fetched, reused }
+    }
+    const tok = fences[i]
+    const sourceFormat = (tok.info || '').trim().toLowerCase() as SourceFormat
     const { overrides, source: cleanSource } = parseDirective(sourceFormat, tok.content)
     const theme = overrides.theme ?? defaultTheme
+
+    progress?.report({ message: `Diagram ${i + 1} / ${fences.length}`, increment: step })
 
     const cached = await deps.cache.get(cleanSource, theme, sourceFormat, ownerTag)
     if (cached) {
@@ -330,9 +412,25 @@ async function preFetchShareTokens(
       fetched++
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : String(err)
-      return { kind: 'error', message: msg }
+      return { kind: 'error', message: msg, fetched, reused }
     }
   }
 
   return { kind: 'ok', fetched, reused }
+}
+
+/**
+ * Wrap a share-resolver in a cancellation guard so a withProgress cancel
+ * stops walking remaining fences without throwing. Returns null on cancel
+ * just like the underlying resolver does on API failure — the injection
+ * module already treats null as "couldn't resolve, leave anonymous".
+ */
+function makeCancellableResolver(
+  resolver: (src: string, theme: string, fmt: SourceFormat) => Promise<string | null>,
+  cancel: vscode.CancellationToken,
+): (src: string, theme: string, fmt: SourceFormat) => Promise<string | null> {
+  return async (src, theme, fmt) => {
+    if (cancel.isCancellationRequested) return null
+    return resolver(src, theme, fmt)
+  }
 }
