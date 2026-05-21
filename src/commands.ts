@@ -4,6 +4,7 @@ import { getConfig } from './settings'
 import { editorLink } from './editor-link'
 import { ShareCache } from './share-cache'
 import { ApiClient, ApiError } from './api-client'
+import { shortHash } from './hash'
 import type { SourceFormat } from './types'
 import type { OpenInEditorArgs } from './codelens-provider'
 
@@ -12,19 +13,25 @@ export function registerCommands(
   api: ApiClient,
   cache: ShareCache,
 ): void {
-  const makeShareIdResolver = () =>
-    async (src: string, theme: string, sourceFormat: SourceFormat): Promise<string | null> => {
-      const cached = await cache.get(src, theme, sourceFormat)
+  const makeShareIdResolver = () => {
+    // Capture ownerTag once per resolver invocation so a single command run
+    // uses a stable namespace even if the user rotates keys mid-command.
+    // See share-cache.ts for why namespacing matters (cross-account leakage).
+    const apiKey = getConfig('apiKey') || ''
+    return async (src: string, theme: string, sourceFormat: SourceFormat): Promise<string | null> => {
+      const ownerTag = await shortHash('owner:' + apiKey)
+      const cached = await cache.get(src, theme, sourceFormat, ownerTag)
       if (cached) return cached
-      if (!getConfig('apiKey')) return null
+      if (!apiKey) return null
       try {
         const share = await api.createShare({ source: src, theme, sourceFormat })
-        await cache.set(src, theme, sourceFormat, share.shareToken)
+        await cache.set(src, theme, sourceFormat, share.shareToken, ownerTag)
         return share.shareToken
       } catch {
         return null
       }
     }
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('beautyDiagram.injectCurrentFile', async () => {

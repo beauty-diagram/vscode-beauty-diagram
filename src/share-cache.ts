@@ -38,15 +38,30 @@ export class ShareCache {
     await this.memento.update(STORAGE_KEY, rows)
   }
 
-  private async makeKey(source: string, theme: string, type: SourceFormat): Promise<string> {
+  private async makeKey(
+    source: string,
+    theme: string,
+    type: SourceFormat,
+    ownerTag: string,
+  ): Promise<string> {
+    // ownerTag namespaces entries so swapping API keys (different account /
+    // plan tier) doesn't make Account B serve Account A's share token.
+    // Anonymous callers use the literal 'anon' tag so their cache is shared
+    // across the absence-of-key state but isolated from any authenticated owner.
+    // Mirror of obsidian-beauty-diagram/src/share-cache.ts ownerTag fix.
     return (
-      (await shortHash(source + '\0' + theme + '\0' + type)) +
-      (await shortHash('\x01' + source + theme + type))
+      (await shortHash(ownerTag + '\0' + source + '\0' + theme + '\0' + type)) +
+      (await shortHash('\x01' + ownerTag + source + theme + type))
     )
   }
 
-  async get(source: string, theme: string, type: SourceFormat): Promise<string | null> {
-    const key = await this.makeKey(source, theme, type)
+  async get(
+    source: string,
+    theme: string,
+    type: SourceFormat,
+    ownerTag = 'anon',
+  ): Promise<string | null> {
+    const key = await this.makeKey(source, theme, type, ownerTag)
     const rows = this.readAll()
     const row = rows.find((r) => r.key === key)
     if (!row) return null
@@ -54,8 +69,14 @@ export class ShareCache {
     return row.id
   }
 
-  async set(source: string, theme: string, type: SourceFormat, id: string): Promise<void> {
-    const key = await this.makeKey(source, theme, type)
+  async set(
+    source: string,
+    theme: string,
+    type: SourceFormat,
+    id: string,
+    ownerTag = 'anon',
+  ): Promise<void> {
+    const key = await this.makeKey(source, theme, type, ownerTag)
     const now = Date.now()
     const rows = this.readAll().filter((r) => r.key !== key)
     rows.push({ key, id, createdAt: now, expiresAt: now + this.ttlMs })

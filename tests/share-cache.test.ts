@@ -65,4 +65,21 @@ describe('ShareCache', () => {
     await cache.clear()
     expect(await cache.get('flow', 'modern', 'mermaid')).toBeNull()
   })
+
+  it('isolates entries by ownerTag (no cross-key contamination)', async () => {
+    await cache.set('flow', 'modern', 'mermaid', 'token-from-A', 'owner-A')
+    await cache.set('flow', 'modern', 'mermaid', 'token-from-B', 'owner-B')
+    expect(await cache.get('flow', 'modern', 'mermaid', 'owner-A')).toBe('token-from-A')
+    expect(await cache.get('flow', 'modern', 'mermaid', 'owner-B')).toBe('token-from-B')
+    // Default tag (anonymous) sees neither — owner-scoped entries are not aliased.
+    expect(await cache.get('flow', 'modern', 'mermaid')).toBeNull()
+  })
+
+  it('treats omitted ownerTag as anonymous namespace', async () => {
+    await cache.set('flow', 'modern', 'mermaid', 'anon-token')
+    expect(await cache.get('flow', 'modern', 'mermaid')).toBe('anon-token')
+    expect(await cache.get('flow', 'modern', 'mermaid', 'anon')).toBe('anon-token')
+    // Authenticated owner cannot read the anonymous entry.
+    expect(await cache.get('flow', 'modern', 'mermaid', 'owner-X')).toBeNull()
+  })
 })
