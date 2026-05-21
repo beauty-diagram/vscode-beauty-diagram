@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9 — 2026-05-21
+
+### Fixes
+
+- **ux**: preview-mode command activation + hover overlay 'Open in editor'
+
 ## 0.1.8 — 2026-05-21
 
 ### Features
