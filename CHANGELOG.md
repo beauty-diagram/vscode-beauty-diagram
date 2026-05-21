@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.6 — 2026-05-21
+
+### Fixes
+
+- contributes.markdown.markdownItPlugins must be flat dotted key, not nested
+
+### Docs
+
+- **changelog**: backfill 7 tag sections (0.1.0-alpha.2 → 0.1.5)
+
+### Chores
+
+- auto-generate CHANGELOG.md from conventional commits on npm version
+
 All notable changes are documented here. Generated from conventional
 commits via `scripts/update-changelog.mjs` on each `npm version` bump.
 
