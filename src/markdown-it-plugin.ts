@@ -80,16 +80,52 @@ function renderDiagramImg(opts: {
   )
 }
 
-export function bdMarkdownItPlugin(md: MarkdownIt): void {
-  // Pre-parse the raw source for our `bd-share: true` front-matter marker
-  // so the fence rule (synchronous, no awaits) knows whether to attempt
-  // the share path. parsePageMode is the same pure module used by Obsidian.
-  // The env object is propagated by markdown-it from md.parse → renderer.rules,
-  // letting us communicate state across rule boundaries without globals.
-  md.core.ruler.before('normalize', 'bd-share-mode', (state) => {
-    ;(state.env as { bdShareMode?: PageMode }).bdShareMode = parsePageMode(state.src)
-  })
+/**
+ * Read the YAML front-matter content from the tokens array.
+ *
+ * Why tokens (not env / state.src): VS Code's markdown engine uses
+ * separate env objects for parse and render
+ * (extensions/markdown-language-features/src/markdownEngine.ts: parse
+ * has its own env on line 187, render has its own on line 204).
+ * Anything we write into env during parse is gone by render time.
+ * Tokens, on the other hand, are the same array passed to both stages.
+ *
+ * Where in the token: VS Code's bundled front-matter block rule
+ * (extensions/markdown-language-features/src/extensions/yamlPreamble/yamlPreamble.ts)
+ * stores the raw YAML body in `token.meta.content`, not `token.content`.
+ * Some third-party packages (e.g. markdown-it-front-matter) store it
+ * differently (callback-only, leaving token.content empty). We probe
+ * both shapes so the same plugin works in production AND in tests.
+ */
+interface FrontMatterMetaShape {
+  content: string
+}
 
+function readFrontMatterContent(
+  tokens: ReadonlyArray<{ type: string; content: string; meta?: unknown }>,
+): string {
+  const fm = tokens.find((t) => t.type === 'front_matter')
+  if (!fm) return ''
+  const meta = fm.meta
+  if (meta && typeof meta === 'object' && typeof (meta as FrontMatterMetaShape).content === 'string') {
+    return (meta as FrontMatterMetaShape).content
+  }
+  if (typeof meta === 'string') return meta
+  return fm.content || ''
+}
+
+function detectPageMode(
+  tokens: ReadonlyArray<{ type: string; content: string; meta?: unknown }>,
+): PageMode {
+  // Wrap the raw front-matter content with `---` delimiters so we can
+  // reuse parsePageMode (which expects a full document-style front-matter
+  // block, not just the YAML body).
+  const fm = readFrontMatterContent(tokens)
+  if (!fm) return 'anonymous'
+  return parsePageMode(`---\n${fm}\n---\n`)
+}
+
+export function bdMarkdownItPlugin(md: MarkdownIt): void {
   // Suppress the front-matter render when our `bd-share` marker is present.
   // VS Code (or one of the popular markdown extensions like Markdown All in One)
   // renders YAML front-matter as a visible chip / table in the preview, which
@@ -145,7 +181,11 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
         : self.renderToken(tokens, idx, options)
     }
 
-    const pageMode: PageMode = (env as { bdShareMode?: PageMode }).bdShareMode ?? 'anonymous'
+    // Read share mode from the front-matter token directly. This used to
+    // come from env.bdShareMode (set in a core ruler) but VS Code uses
+    // independent env objects for parse and render — env-based metadata
+    // never made it to the fence rule. See readFrontMatterContent doc.
+    const pageMode: PageMode = detectPageMode(tokens)
 
     // share mode + extension context wired + cache hit → emit /v1/share/<token>.svg
     // share mode + cache miss → fall through to anonymous and prepend a hint
