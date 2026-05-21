@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.11 — 2026-05-21
+
+### Fixes
+
+- **fence**: use \<div\> wrapper instead of \<span\> for diagram block
+
 ## 0.1.10 — 2026-05-21
 
 ### Features
