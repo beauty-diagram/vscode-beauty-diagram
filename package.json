@@ -4,13 +4,29 @@
   "description": "Beautify Mermaid and PlantUML in VS Code Markdown Preview — 9 deck-ready themes, dark-mode friendly, no setup.",
   "version": "0.1.0",
   "publisher": "beauty-diagram",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Visualization", "Other"],
-  "keywords": ["mermaid", "plantuml", "diagram", "themes", "preview", "markdown"],
-  "activationEvents": ["onLanguage:markdown"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "mermaid",
+    "plantuml",
+    "diagram",
+    "themes",
+    "preview",
+    "markdown"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
-    "markdown": { "markdownItPlugins": true },
+    "markdown": {
+      "markdownItPlugins": true
+    },
     "configuration": {
       "title": "Beauty Diagram",
       "properties": {
@@ -27,7 +43,17 @@
         },
         "beautyDiagram.defaultTheme": {
           "type": "string",
-          "enum": ["classic", "modern", "slate", "atlas", "obsidian", "brutalist", "atelier", "blueprint", "memphis"],
+          "enum": [
+            "classic",
+            "modern",
+            "slate",
+            "atlas",
+            "obsidian",
+            "brutalist",
+            "atelier",
+            "blueprint",
+            "memphis"
+          ],
           "default": "classic",
           "description": "Default theme for blocks without an inline directive."
         },
@@ -55,7 +81,10 @@
     "publish:ovsx": "ovsx publish"
   },
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/beauty-diagram/vscode-beauty-diagram" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beauty-diagram/vscode-beauty-diagram"
+  },
   "homepage": "https://www.beauty-diagram.com",
   "devDependencies": {
     "@types/markdown-it": "^14.1.0",
@@ -63,9 +92,9 @@
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.20.0",
+    "markdown-it": "^14.1.1",
     "ovsx": "^0.10.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
-  },
-  "dependencies": {}
+  }
 }
