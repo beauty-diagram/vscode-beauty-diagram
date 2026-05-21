@@ -45,13 +45,13 @@ Open any `.md` file with a `mermaid` or `plantuml` fence. Open the preview (`Cmd
 
 ### Per-block theme override
 
-```
+````md
 ```mermaid
 %% bd:theme=memphis
 flowchart LR
   A --> B
 ```
-```
+````
 
 For PlantUML, use `' bd:theme=memphis` instead.
 
