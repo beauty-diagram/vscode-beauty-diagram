@@ -98,6 +98,17 @@ describe('bdMarkdownItPlugin', () => {
     expect(html).toContain('<pre>')
   })
 
+  it('wraps rendered diagram in bd-block with Open-in-editor badge', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\nflowchart LR\n  A --> B\n```')
+    expect(html).toContain('<span class="bd-block">')
+    expect(html).toContain('class="bd-edit-badge"')
+    expect(html).toContain('beauty-diagram.com/editor')
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noopener noreferrer"')
+  })
+
   describe('share mode (frontmatter bd-share: true)', () => {
     const apiBase = 'https://api.beauty-diagram.com'
 

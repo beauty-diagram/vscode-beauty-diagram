@@ -2,6 +2,7 @@ import type MarkdownIt from 'markdown-it'
 import { composeUrl } from './url-composer'
 import { parseDirective } from './directives'
 import { parsePageMode } from './share-mode'
+import { editorLink } from './editor-link'
 import { getConfig } from './settings'
 import { ANON_SOURCE_BYTE_CAP } from './constants'
 import { shortHashSync } from './hash'
@@ -52,6 +53,39 @@ function firstLine(s: string): string {
 function buildShareUrl(apiBase: string, token: string, bg?: 'transparent'): string {
   const base = `${apiBase}/v1/share/${token}.svg`
   return bg === 'transparent' ? `${base}?bg=transparent` : base
+}
+
+/**
+ * Render the diagram <img> wrapped in a positioned container with a hover-
+ * revealed "Open in editor" badge — mirrors the Obsidian plugin's UX in the
+ * Reading View. VS Code markdown preview lets external <a href> open the
+ * system browser, so this works without needing a webview script (which we
+ * couldn't ship anyway — see Phase 3.1 spike).
+ *
+ * Note: CSS for `.bd-block` + `.bd-edit-badge` lives in styles/preview.css,
+ * contributed via package.json `contributes.markdown.previewStyles`.
+ */
+function renderDiagramBlock(opts: {
+  src: string
+  alt: string
+  source: string
+  theme: string
+  sourceFormat: SourceFormat
+  mode: PageMode
+}): string {
+  const editUrl = editorLink({
+    source: opts.source,
+    theme: opts.theme,
+    sourceFormat: opts.sourceFormat,
+  })
+  return (
+    `<span class="bd-block">` +
+    `<img class="bd-img" src="${escapeHtml(opts.src)}" alt="${opts.alt}" data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}" />` +
+    `<a class="bd-edit-badge" href="${escapeHtml(editUrl)}" target="_blank" rel="noopener noreferrer" ` +
+    `aria-label="Open this diagram's source in the Beauty Diagram editor (edits don't sync back to this file)">` +
+    `↗ Open in editor</a>` +
+    `</span>\n`
+  )
 }
 
 export function bdMarkdownItPlugin(md: MarkdownIt): void {
@@ -105,8 +139,14 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
       const cachedToken = context.cache.getSync(cleanSource, theme, sourceFormat, ownerTag)
       if (cachedToken) {
         const url = buildShareUrl(apiBase, cachedToken, bg)
-        const alt = escapeHtml(firstLine(cleanSource))
-        return `<img class="bd-img" src="${escapeHtml(url)}" alt="${alt}" data-bd-source-format="${sourceFormat}" data-bd-mode="share" />\n`
+        return renderDiagramBlock({
+          src: url,
+          alt: escapeHtml(firstLine(cleanSource)),
+          source: cleanSource,
+          theme,
+          sourceFormat,
+          mode: 'share',
+        })
       }
       shareHint =
         `<div class="bd-note">Share mode is on for this page but the share URL for this diagram isn't cached yet. ` +
@@ -124,8 +164,14 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     })
 
     if (result.kind === 'anonymous') {
-      const alt = escapeHtml(firstLine(cleanSource))
-      return `${shareHint}<img class="bd-img" src="${escapeHtml(result.url)}" alt="${alt}" data-bd-source-format="${sourceFormat}" />\n`
+      return shareHint + renderDiagramBlock({
+        src: result.url,
+        alt: escapeHtml(firstLine(cleanSource)),
+        source: cleanSource,
+        theme,
+        sourceFormat,
+        mode: 'anonymous',
+      })
     }
 
     // over-size-cap — fall back to default renderer + show note

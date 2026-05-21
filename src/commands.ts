@@ -13,6 +13,56 @@ import type { SourceFormat } from './types'
 import type { OpenInEditorArgs } from './codelens-provider'
 
 /**
+ * Resolve the markdown document the user is currently working on, even when
+ * focus is on the markdown preview pane (a webview, not a TextEditor).
+ * Fallback chain:
+ *   1. activeTextEditor — direct case
+ *   2. visibleTextEditors — preview focused but source still open in another column
+ *   3. active tab input — preview-only case, surface the linked source URI
+ * Returns null when there's truly no markdown context (e.g. focus on a
+ * settings tab and no markdown open anywhere).
+ */
+async function findActiveMarkdownDocument(): Promise<vscode.TextDocument | null> {
+  const active = vscode.window.activeTextEditor
+  if (active && active.document.languageId === 'markdown') return active.document
+
+  for (const editor of vscode.window.visibleTextEditors) {
+    if (editor.document.languageId === 'markdown') return editor.document
+  }
+
+  const tab = vscode.window.tabGroups.activeTabGroup?.activeTab
+  // TabInputText / TabInputCustom / TabInputWebview all expose either `uri`
+  // or a notebook/diff-shaped input. We try the simplest probe first.
+  const input = tab?.input as { uri?: vscode.Uri } | undefined
+  if (input?.uri) {
+    try {
+      const doc = await vscode.workspace.openTextDocument(input.uri)
+      if (doc.languageId === 'markdown') return doc
+    } catch {
+      // fall through
+    }
+  }
+  return null
+}
+
+/**
+ * Replace the entire document text via WorkspaceEdit so callers don't need an
+ * active editor (works while focus is on the preview pane).
+ */
+async function replaceEntireDocument(doc: vscode.TextDocument, updated: string): Promise<void> {
+  const edit = new vscode.WorkspaceEdit()
+  edit.replace(
+    doc.uri,
+    new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length)),
+    updated,
+  )
+  await vscode.workspace.applyEdit(edit)
+  // Persist immediately so other tools (preview refresh, git, etc) see the
+  // change without requiring the user to Cmd+S after every toggle.
+  if (doc.isDirty) await doc.save()
+}
+
+/**
  * Lazy accessors — see extension.ts. We never capture an ApiClient or
  * UsageCache snapshot here because saveSettings replaces them on key /
  * apiBase change; capturing would silently call /v1/share with stale
@@ -47,12 +97,12 @@ export function registerCommands(
 
   context.subscriptions.push(
     vscode.commands.registerCommand('beautyDiagram.injectCurrentFile', async () => {
-      const editor = vscode.window.activeTextEditor
-      if (!editor || editor.document.languageId !== 'markdown') {
+      const doc = await findActiveMarkdownDocument()
+      if (!doc) {
         vscode.window.showWarningMessage('Beauty Diagram: open a Markdown file first.')
         return
       }
-      const original = editor.document.getText()
+      const original = doc.getText()
       const updated = await injectEmbeds(original, {
         theme: getConfig('defaultTheme'),
         hasApiKey: !!getConfig('apiKey'),
@@ -63,13 +113,7 @@ export function registerCommands(
         vscode.window.showInformationMessage('Beauty Diagram: no changes needed.')
         return
       }
-      await editor.edit((edit) => {
-        const fullRange = new vscode.Range(
-          editor.document.positionAt(0),
-          editor.document.positionAt(original.length),
-        )
-        edit.replace(fullRange, updated)
-      })
+      await replaceEntireDocument(doc, updated)
       vscode.window.showInformationMessage('Beauty Diagram: injection done.')
     }),
 
@@ -150,8 +194,8 @@ export function registerCommands(
     }),
 
     vscode.commands.registerCommand('beautyDiagram.toggleShareMode', async () => {
-      const editor = vscode.window.activeTextEditor
-      if (!editor || editor.document.languageId !== 'markdown') {
+      const doc = await findActiveMarkdownDocument()
+      if (!doc) {
         vscode.window.showWarningMessage('Beauty Diagram: open a Markdown file first.')
         return
       }
@@ -184,24 +228,18 @@ export function registerCommands(
         return
       }
 
-      const original = editor.document.getText()
+      const original = doc.getText()
       const current = parsePageMode(original)
       const next = current === 'share' ? 'anonymous' : 'share'
       const updated = setPageShareMode(original, next)
 
       if (next === 'share') {
-        // Pre-fetch share tokens for every mermaid/plantuml fence in the
-        // current document. Fence rule is synchronous — without pre-fetched
-        // tokens, the next preview render would fall back to anonymous +
-        // hint. Doing the pre-fetch here is the maintainer-blessed shape
-        // (see Phase 3.1 spike: built-in markdown preview rejects async
-        // messaging from webview scripts; async work belongs in the host).
         const result = await preFetchShareTokens(deps, original)
         if (result.kind === 'error') {
           vscode.window.showErrorMessage(`Beauty Diagram: share-mode pre-fetch failed (${result.message})`)
           return
         }
-        await applyEdit(editor, original, updated)
+        if (updated !== original) await replaceEntireDocument(doc, updated)
         await refreshActivePreview()
         vscode.window.showInformationMessage(
           `Beauty Diagram: share mode enabled. ${result.fetched} new diagram(s) cached` +
@@ -209,7 +247,7 @@ export function registerCommands(
             '. First preview consumes 1 share quota per unique diagram.',
         )
       } else {
-        await applyEdit(editor, original, updated)
+        if (updated !== original) await replaceEntireDocument(doc, updated)
         await refreshActivePreview()
         vscode.window.showInformationMessage(
           'Beauty Diagram: share mode disabled. This page renders anonymously (watermark).',
@@ -222,21 +260,6 @@ export function registerCommands(
       vscode.env.openExternal(vscode.Uri.parse(url))
     }),
   )
-}
-
-async function applyEdit(
-  editor: vscode.TextEditor,
-  original: string,
-  updated: string,
-): Promise<void> {
-  if (updated === original) return
-  await editor.edit((edit) => {
-    const fullRange = new vscode.Range(
-      editor.document.positionAt(0),
-      editor.document.positionAt(original.length),
-    )
-    edit.replace(fullRange, updated)
-  })
 }
 
 async function refreshActivePreview(): Promise<void> {
