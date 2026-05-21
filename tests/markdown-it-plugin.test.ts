@@ -108,6 +108,53 @@ describe('bdMarkdownItPlugin', () => {
     expect(html).not.toContain('bd-edit-badge')
   })
 
+  it('skips empty mermaid fence (no <img>, falls back to default fence)', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\n```')
+    expect(html).not.toContain('bd-img')
+    expect(html).not.toContain('beautify.svg')
+    expect(html).toContain('<pre>')   // default fence renderer
+  })
+
+  it('skips whitespace-only mermaid fence', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\n   \n\n```')
+    expect(html).not.toContain('bd-img')
+    expect(html).not.toContain('beautify.svg')
+  })
+
+  describe('front-matter suppression', () => {
+    // Use markdown-it-front-matter to simulate the same plugin VS Code uses;
+    // without it markdown-it doesn't tokenize ---/--- as front_matter.
+    it('hides front-matter containing bd-share marker', async () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+      const frontMatterPlugin = (await import('markdown-it-front-matter')).default
+      const md = new MarkdownIt()
+        .use(frontMatterPlugin, () => {})
+        .use(bdMarkdownItPlugin)
+      const html = md.render('---\nbd-share: true\n---\n\n# Title')
+      // front-matter token rendered to empty string when bd-share present
+      expect(html).not.toContain('bd-share')
+      expect(html).toContain('<h1>Title</h1>')
+    })
+
+    it('renders front-matter normally when bd-share is absent', async () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+      const seen: string[] = []
+      const frontMatterPlugin = (await import('markdown-it-front-matter')).default
+      const md = new MarkdownIt()
+        .use(frontMatterPlugin, (fm: string) => seen.push(fm))
+        .use(bdMarkdownItPlugin)
+      md.render('---\ntitle: Foo\ntags: [x]\n---\n\n# Title')
+      // default front_matter renderer returns '' anyway in our test setup,
+      // but the plugin's parse callback should see the unmodified content
+      expect(seen[0]).toContain('title: Foo')
+      expect(seen[0]).not.toContain('bd-share')
+    })
+  })
+
   describe('share mode (frontmatter bd-share: true)', () => {
     const apiBase = 'https://api.beauty-diagram.com'
 

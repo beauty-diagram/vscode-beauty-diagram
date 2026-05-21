@@ -90,6 +90,23 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     ;(state.env as { bdShareMode?: PageMode }).bdShareMode = parsePageMode(state.src)
   })
 
+  // Suppress the front-matter render when our `bd-share` marker is present.
+  // VS Code (or one of the popular markdown extensions like Markdown All in One)
+  // renders YAML front-matter as a visible chip / table in the preview, which
+  // surfaces our internal plugin marker as if it were user-facing metadata.
+  // We only hide it when bd-share is in there — other front-matter (tags,
+  // title, custom user keys) renders normally.
+  const defaultFrontMatter = md.renderer.rules.front_matter
+  md.renderer.rules.front_matter = (tokens, idx, options, env, self) => {
+    const content = tokens[idx].content
+    if (/^bd-share\s*:/m.test(content)) {
+      return ''
+    }
+    return defaultFrontMatter
+      ? defaultFrontMatter(tokens, idx, options, env, self)
+      : self.renderToken(tokens, idx, options)
+  }
+
   const defaultFence = md.renderer.rules.fence
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
     const token = tokens[idx]
@@ -117,6 +134,16 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     const { overrides, source: cleanSource } = parseDirective(sourceFormat, token.content)
     const theme = overrides.theme ?? getConfig('defaultTheme')
     const bg = overrides.bg === 'transparent' ? ('transparent' as const) : undefined
+
+    // Empty fence (whitespace-only or no content): nothing to render, and the
+    // server's POST /v1/share rejects an empty source with 400 invalid_input.
+    // Mirror Obsidian's behavior — quietly skip the block (fall back to the
+    // default markdown-it fence renderer, which produces an empty <pre><code>).
+    if (!cleanSource.trim()) {
+      return defaultFence
+        ? defaultFence(tokens, idx, options, env, self)
+        : self.renderToken(tokens, idx, options)
+    }
 
     const pageMode: PageMode = (env as { bdShareMode?: PageMode }).bdShareMode ?? 'anonymous'
 

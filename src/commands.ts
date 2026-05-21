@@ -396,6 +396,11 @@ async function preFetchShareTokens(
 
     progress?.report({ message: `Diagram ${i + 1} / ${fences.length}`, increment: step })
 
+    // Empty fence — server rejects empty source with 400 invalid_input; mirror
+    // Obsidian's behavior and silently skip. The fence rule renders these as
+    // empty <pre><code> blocks; nothing to share.
+    if (!cleanSource.trim()) continue
+
     const cached = await deps.cache.get(cleanSource, theme, sourceFormat, ownerTag)
     if (cached) {
       reused++
