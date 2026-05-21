@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { composeUrl } from '../src/url-composer'
 
 describe('composeUrl', () => {
-  it('returns anonymous URL for small source without API key', () => {
+  it('returns anonymous URL for small source in anonymous mode', () => {
     const r = composeUrl({
       source: 'flowchart LR\n  A --> B',
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
     })
     expect(r.kind).toBe('anonymous')
     if (r.kind === 'anonymous') {
@@ -26,7 +26,7 @@ describe('composeUrl', () => {
       source: '中文 → flow',
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
     })
     expect(r.kind).toBe('anonymous')
     if (r.kind === 'anonymous') {
@@ -40,23 +40,33 @@ describe('composeUrl', () => {
     }
   })
 
-  it('flags needs-share when API key configured (Pro path)', () => {
+  it('flags needs-share when page is in share mode (Pro opt-in)', () => {
     const r = composeUrl({
       source: 'flowchart LR\n  A --> B',
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: true,
+      mode: 'share',
     })
-    expect(r).toEqual({ kind: 'needs-share', reason: 'has-api-key' })
+    expect(r).toEqual({ kind: 'needs-share', reason: 'share-mode' })
   })
 
-  it('flags needs-share when source exceeds 5KB even without API key', () => {
+  it('share mode wins over size — short source in share mode still returns share-mode reason', () => {
+    const r = composeUrl({
+      source: 'A --> B',
+      theme: 'modern',
+      sourceFormat: 'mermaid',
+      mode: 'share',
+    })
+    expect(r).toEqual({ kind: 'needs-share', reason: 'share-mode' })
+  })
+
+  it('flags needs-share when anonymous source exceeds 5KB (over-size-cap)', () => {
     const big = 'A --> B\n'.repeat(700) // ~5.6 KB
     const r = composeUrl({
       source: big,
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
     })
     expect(r).toEqual({ kind: 'needs-share', reason: 'over-size-cap' })
   })
@@ -68,7 +78,7 @@ describe('composeUrl', () => {
       source: cjk,
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
     })
     expect(r).toEqual({ kind: 'needs-share', reason: 'over-size-cap' })
   })
@@ -78,7 +88,7 @@ describe('composeUrl', () => {
       source: 'A --> B',
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
       bg: 'transparent',
     })
     expect(r.kind).toBe('anonymous')
@@ -92,7 +102,7 @@ describe('composeUrl', () => {
       source: 'A --> B',
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
     })
     expect(r.kind).toBe('anonymous')
     if (r.kind === 'anonymous') {
@@ -105,7 +115,7 @@ describe('composeUrl', () => {
       source: 'A --> B',
       theme: 'modern',
       sourceFormat: 'mermaid',
-      hasApiKey: false,
+      mode: 'anonymous',
       apiBase: 'http://localhost:8787',
     })
     expect(r.kind).toBe('anonymous')

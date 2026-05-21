@@ -53,11 +53,16 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     const theme = overrides.theme ?? getConfig('defaultTheme')
     const bg = overrides.bg === 'transparent' ? ('transparent' as const) : undefined
 
+    // Phase 1 of share-mode spec: fence rule is synchronous, can't await a
+    // share API call, so preview always renders anonymously. Phase 3 will
+    // switch this to a placeholder `<img data-bd-pending>` that the
+    // webview preview-bridge script swaps to a share URL asynchronously
+    // when the page's frontmatter has `bd-share: true`.
     const result = composeUrl({
       source: cleanSource,
       theme,
       sourceFormat,
-      hasApiKey: false,
+      mode: 'anonymous',
       apiBase,
       bg,
     })

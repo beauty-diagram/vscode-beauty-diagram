@@ -89,7 +89,12 @@ async function urlForSource(
     const base = opts.apiBase ?? 'https://api.beauty-diagram.com'
     return `${base}/v1/share/${cached}.svg`
   }
-  const r = composeUrl({ source, theme, sourceFormat, hasApiKey: opts.hasApiKey, apiBase: opts.apiBase })
+  // Phase 1 of share-mode spec: inject command's "has API key" pre-condition
+  // maps directly to share mode (caller already gated the path). Phase 2
+  // will leave inject's behavior intact — inject is the "publish artifact"
+  // path that always uses share URLs, distinct from preview share-mode.
+  const mode = opts.hasApiKey ? 'share' : 'anonymous'
+  const r = composeUrl({ source, theme, sourceFormat, mode, apiBase: opts.apiBase })
   if (r.kind === 'anonymous') return r.url
   // Anonymous over-size path: returns sentinel so caller / <img> error UI can react.
   return '#bd-error-needs-share'

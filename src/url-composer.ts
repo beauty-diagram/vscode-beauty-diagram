@@ -2,8 +2,8 @@ import { ANON_SOURCE_BYTE_CAP, DEFAULT_API_BASE } from './constants'
 import type { ComposeOptions, ComposeResult } from './types'
 
 export function composeUrl(opts: ComposeOptions): ComposeResult {
-  if (opts.hasApiKey) {
-    return { kind: 'needs-share', reason: 'has-api-key' }
+  if (opts.mode === 'share') {
+    return { kind: 'needs-share', reason: 'share-mode' }
   }
 
   const bytes = utf8ByteLength(opts.source)
