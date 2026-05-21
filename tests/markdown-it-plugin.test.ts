@@ -98,15 +98,14 @@ describe('bdMarkdownItPlugin', () => {
     expect(html).toContain('<pre>')
   })
 
-  it('wraps rendered diagram in bd-block with Open-in-editor badge', () => {
+  it('emits a bare <img> with no wrapper (0.1.9-0.1.11 wrapper broke VS Code preview)', () => {
     setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
     const md = new MarkdownIt().use(bdMarkdownItPlugin)
     const html = md.render('```mermaid\nflowchart LR\n  A --> B\n```')
-    expect(html).toContain('<div class="bd-block">')
-    expect(html).toContain('class="bd-edit-badge"')
-    expect(html).toContain('beauty-diagram.com/editor')
-    expect(html).toContain('target="_blank"')
-    expect(html).toContain('rel="noopener noreferrer"')
+    expect(html).toContain('<img class="bd-img"')
+    expect(html).not.toContain('<div class="bd-block"')
+    expect(html).not.toContain('<span class="bd-block"')
+    expect(html).not.toContain('bd-edit-badge')
   })
 
   describe('share mode (frontmatter bd-share: true)', () => {
@@ -132,7 +131,7 @@ describe('bdMarkdownItPlugin', () => {
       expect(html).not.toContain('beautify.svg')
     })
 
-    it('falls back to anonymous + hint when share mode is on but cache misses', () => {
+    it('falls back to anonymous silently when share mode is on but cache misses', () => {
       setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase, apiKey: 'bd_live_k' })
       const cache = new ShareCache(new FakeMemento())
       setBdShareContext({ cache, getApiKey: () => 'bd_live_k' })
@@ -141,8 +140,7 @@ describe('bdMarkdownItPlugin', () => {
       const html = md.render('---\nbd-share: true\n---\n\n```mermaid\nflowchart LR\n```')
 
       expect(html).toContain('beautify.svg')   // anonymous fallback
-      expect(html).toContain('Share mode is on')   // hint banner
-      expect(html).toContain('Toggle share mode')
+      expect(html).not.toContain('Share mode is on')   // hint banner removed in 0.1.12
     })
 
     it('ignores frontmatter when share context is not wired (defensive)', () => {
@@ -152,7 +150,6 @@ describe('bdMarkdownItPlugin', () => {
       const html = md.render('---\nbd-share: true\n---\n\n```mermaid\nflowchart LR\n```')
 
       expect(html).toContain('beautify.svg')   // anonymous only
-      expect(html).not.toContain('Share mode is on')   // no hint without context
     })
 
     it('renders anonymously when frontmatter does not opt in to share', () => {
@@ -166,7 +163,6 @@ describe('bdMarkdownItPlugin', () => {
 
       expect(html).toContain('beautify.svg')
       expect(html).not.toContain('/v1/share/')
-      expect(html).not.toContain('Share mode is on')
     })
   })
 })

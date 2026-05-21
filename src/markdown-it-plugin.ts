@@ -2,7 +2,6 @@ import type MarkdownIt from 'markdown-it'
 import { composeUrl } from './url-composer'
 import { parseDirective } from './directives'
 import { parsePageMode } from './share-mode'
-import { editorLink } from './editor-link'
 import { getConfig } from './settings'
 import { ANON_SOURCE_BYTE_CAP } from './constants'
 import { shortHashSync } from './hash'
@@ -56,35 +55,28 @@ function buildShareUrl(apiBase: string, token: string, bg?: 'transparent'): stri
 }
 
 /**
- * Render the diagram <img> wrapped in a positioned container with a hover-
- * revealed "Open in editor" badge — mirrors the Obsidian plugin's UX in the
- * Reading View. VS Code markdown preview lets external <a href> open the
- * system browser, so this works without needing a webview script (which we
- * couldn't ship anyway — see Phase 3.1 spike).
+ * Render the diagram as a bare <img>. We previously wrapped in a positioned
+ * <span> (0.1.9) and then <div> (0.1.11) to provide a hover-revealed
+ * "Open in editor" badge — both broke VS Code's preview pipeline entirely
+ * (fence content disappeared from the DOM, no network request, no DOM trace).
  *
- * Note: CSS for `.bd-block` + `.bd-edit-badge` lives in styles/preview.css,
- * contributed via package.json `contributes.markdown.previewStyles`.
+ * Root cause never fully pinned: likely interaction with VS Code's
+ * markdown-it pipeline / dompurify sanitizer / built-in mermaid renderer
+ * (`vscode.mermaid-markdown-features`) that's intolerant of additional
+ * structure around fence output. Bare <img> is what 0.1.5–0.1.8 shipped
+ * and what reliably works. CodeLens already provides an "Open in editor"
+ * affordance in source mode; preview users can right-click the image and
+ * use the URL directly.
  */
-function renderDiagramBlock(opts: {
+function renderDiagramImg(opts: {
   src: string
   alt: string
-  source: string
-  theme: string
   sourceFormat: SourceFormat
   mode: PageMode
 }): string {
-  const editUrl = editorLink({
-    source: opts.source,
-    theme: opts.theme,
-    sourceFormat: opts.sourceFormat,
-  })
   return (
-    `<div class="bd-block">` +
-    `<img class="bd-img" src="${escapeHtml(opts.src)}" alt="${opts.alt}" data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}" />` +
-    `<a class="bd-edit-badge" href="${escapeHtml(editUrl)}" target="_blank" rel="noopener noreferrer" ` +
-    `aria-label="Open this diagram's source in the Beauty Diagram editor (edits don't sync back to this file)">` +
-    `↗ Open in editor</a>` +
-    `</div>\n`
+    `<img class="bd-img" src="${escapeHtml(opts.src)}" alt="${opts.alt}" ` +
+    `data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}" />\n`
   )
 }
 
@@ -133,25 +125,19 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     //   (the user needs to run `Beauty Diagram: Toggle share mode` to pre-fetch
     //    tokens for this file; a fresh-open of a file that already has
     //    `bd-share: true` from git will hit this path on first preview).
-    let shareHint = ''
     if (pageMode === 'share' && context) {
       const ownerTag = shortHashSync('owner:' + context.getApiKey())
       const cachedToken = context.cache.getSync(cleanSource, theme, sourceFormat, ownerTag)
       if (cachedToken) {
-        const url = buildShareUrl(apiBase, cachedToken, bg)
-        return renderDiagramBlock({
-          src: url,
+        return renderDiagramImg({
+          src: buildShareUrl(apiBase, cachedToken, bg),
           alt: escapeHtml(firstLine(cleanSource)),
-          source: cleanSource,
-          theme,
           sourceFormat,
           mode: 'share',
         })
       }
-      shareHint =
-        `<div class="bd-note">Share mode is on for this page but the share URL for this diagram isn't cached yet. ` +
-        `Run <code>Beauty Diagram: Toggle share mode for this page</code> twice (off then on) ` +
-        `to re-pre-fetch tokens, then refresh the preview. Showing the watermarked render below.</div>\n`
+      // cache miss in share mode — fall through to anonymous; no hint banner
+      // (the banner was also unreliable in some preview pipelines)
     }
 
     const result = composeUrl({
@@ -164,13 +150,11 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     })
 
     if (result.kind === 'anonymous') {
-      return shareHint + renderDiagramBlock({
+      return renderDiagramImg({
         src: result.url,
         alt: escapeHtml(firstLine(cleanSource)),
-        source: cleanSource,
-        theme,
         sourceFormat,
-        mode: 'anonymous',
+        mode: pageMode,
       })
     }
 
@@ -179,6 +163,6 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     const fallback = defaultFence
       ? defaultFence(tokens, idx, options, env, self)
       : self.renderToken(tokens, idx, options)
-    return shareHint + fallback + note
+    return fallback + note
   }
 }
