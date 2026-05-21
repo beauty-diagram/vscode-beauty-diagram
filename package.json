@@ -103,7 +103,7 @@
     "publish:vsce": "vsce publish",
     "publish:ovsx": "ovsx publish",
     "preversion": "npm run typecheck && npm test && npm run build",
-    "version": "git add package.json",
+    "version": "node scripts/update-changelog.mjs && git add package.json CHANGELOG.md",
     "postversion": "git push --follow-tags origin main"
   },
   "license": "MIT",
