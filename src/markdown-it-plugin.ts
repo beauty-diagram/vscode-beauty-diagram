@@ -23,10 +23,12 @@ function firstLine(s: string): string {
 }
 
 export function bdMarkdownItPlugin(md: MarkdownIt): void {
+  console.log('[bd] bdMarkdownItPlugin: registering fence override')
   const defaultFence = md.renderer.rules.fence
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
     const token = tokens[idx]
     const info = (token.info || '').trim().toLowerCase()
+    console.log('[bd] fence rule fired, info:', JSON.stringify(info), 'replaceMermaid:', getConfig('replaceMermaid'), 'handlePlantuml:', getConfig('handlePlantuml'))
 
     if (info !== 'mermaid' && info !== 'plantuml') {
       return defaultFence

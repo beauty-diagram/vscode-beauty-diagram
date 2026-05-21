@@ -12,6 +12,7 @@ const PLUGIN_VERSION = '0.1.0'
 export function activate(context: vscode.ExtensionContext): {
   extendMarkdownIt(md: MarkdownIt): MarkdownIt
 } {
+  console.log('[bd] activate() called — VS Code extension loaded')
   const cache = new ShareCache(context.globalState)
   const api = createApiClient({
     apiBase: getConfig('apiBase'),
@@ -30,6 +31,7 @@ export function activate(context: vscode.ExtensionContext): {
 
   return {
     extendMarkdownIt(md: MarkdownIt): MarkdownIt {
+      console.log('[bd] extendMarkdownIt called — applying plugin')
       return md.use(bdMarkdownItPlugin)
     },
   }
