@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.13 — 2026-05-21
+
+### Fixes
+
+- **preview**: hide bd-share frontmatter + skip empty fence
+
 ## 0.1.12 — 2026-05-21
 
 ### Fixes
