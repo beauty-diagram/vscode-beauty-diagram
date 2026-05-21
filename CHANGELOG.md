@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.8 — 2026-05-21
+
+### Features
+
+- **share-mode**: per-page bd-share opt-in with pre-fetch + plan gating
+- **share-mode**: copy pure module from obsidian-beauty-diagram
+
+### Fixes
+
+- **share-cache**: namespace entries by API key (parity with obsidian alpha.9)
+
+### Refactors
+
+- **url-composer**: replace hasApiKey with explicit PageMode
+
 ## 0.1.7 — 2026-05-21
 
 ### Fixes
