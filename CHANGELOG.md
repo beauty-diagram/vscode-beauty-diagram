@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.16 — 2026-05-22
+
+### Fixes
+
+- **preview**: hide bd-share via previewScript instead of renderer override
+
 ## 0.1.15 — 2026-05-22
 
 ### Fixes
