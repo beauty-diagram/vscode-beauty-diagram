@@ -125,7 +125,14 @@ describe('bdMarkdownItPlugin', () => {
     expect(html).not.toContain('beautify.svg')
   })
 
-  describe('front-matter suppression (VS Code shape: token.meta.content)', () => {
+  // NOTE: front_matter renderer suppression was removed in 0.1.17 — VS Code's
+  // yamlPreamble extension overwrites third-party renderer.rules.front_matter
+  // after our extendMarkdownIt runs (markdownEngine.ts:142-150), so the
+  // approach was guaranteed dead in production. Suppression now lives in
+  // preview/hide-bd-share.js (DOM-level via previewScripts). See that file
+  // for the actual behavior; this describe block is kept as a documentation
+  // anchor.
+  describe.skip('front-matter suppression — moved to previewScript in 0.1.16', () => {
     // The frontmatter block rule from our share-mode tests' makeMd() helper
     // sets token.meta.content the same way VS Code's bundled rule does.
     // We re-use that here to exercise the production code path.

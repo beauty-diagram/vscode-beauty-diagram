@@ -131,24 +131,12 @@ function detectPageMode(
 }
 
 export function bdMarkdownItPlugin(md: MarkdownIt): void {
-  // Suppress the front-matter render when our `bd-share` marker is present.
-  // VS Code renders YAML front-matter as a visible table chip in the preview
-  // (markdown.preview.frontMatter setting, default 'table'), which surfaces
-  // our internal plugin marker as if it were user-facing metadata.
-  //
-  // VS Code stores the raw YAML in `token.meta.content`, not `token.content`
-  // (same gotcha as detectPageMode — see comment above). The original 0.1.13
-  // attempt read token.content and silently never matched in production.
-  const defaultFrontMatter = md.renderer.rules.front_matter
-  md.renderer.rules.front_matter = (tokens, idx, options, env, self) => {
-    const content = tokenFrontMatterText(tokens[idx])
-    if (/^bd-share\s*:/m.test(content)) {
-      return ''
-    }
-    return defaultFrontMatter
-      ? defaultFrontMatter(tokens, idx, options, env, self)
-      : self.renderToken(tokens, idx, options)
-  }
+  // Note: we previously tried md.renderer.rules.front_matter = () => '' to
+  // hide our bd-share chip, but VS Code's bundled yamlPreamble extension
+  // registers AFTER third-party extendMarkdownIt contributors (see
+  // markdownEngine.ts:142-150) and unconditionally overwrites the rule.
+  // The actual suppression lives in preview/hide-bd-share.js (a webview
+  // previewScript) — search there if you need to change the behavior.
 
   const defaultFence = md.renderer.rules.fence
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
