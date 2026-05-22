@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.17 — 2026-05-22
+
+### Chores
+
+- **cleanup**: remove dead front_matter renderer override
+
 ## 0.1.16 — 2026-05-22
 
 ### Fixes
