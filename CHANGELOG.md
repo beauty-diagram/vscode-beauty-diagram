@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.15 — 2026-05-22
+
+### Fixes
+
+- **frontmatter**: suppress bd-share chip — read meta.content, not content
+
 ## 0.1.14 — 2026-05-21
 
 ### Fixes
