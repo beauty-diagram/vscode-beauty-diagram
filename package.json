@@ -25,6 +25,9 @@
   "main": "./dist/extension.js",
   "contributes": {
     "markdown.markdownItPlugins": true,
+    "markdown.previewScripts": [
+      "./preview/hide-bd-share.js"
+    ],
     "configuration": {
       "title": "Beauty Diagram",
       "properties": {
