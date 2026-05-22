@@ -125,33 +125,62 @@ describe('bdMarkdownItPlugin', () => {
     expect(html).not.toContain('beautify.svg')
   })
 
-  describe('front-matter suppression', () => {
-    // Use markdown-it-front-matter to simulate the same plugin VS Code uses;
-    // without it markdown-it doesn't tokenize ---/--- as front_matter.
-    it('hides front-matter containing bd-share marker', async () => {
-      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
-      const frontMatterPlugin = (await import('markdown-it-front-matter')).default
+  describe('front-matter suppression (VS Code shape: token.meta.content)', () => {
+    // The frontmatter block rule from our share-mode tests' makeMd() helper
+    // sets token.meta.content the same way VS Code's bundled rule does.
+    // We re-use that here to exercise the production code path.
+    function makeMdWithVsCodeFrontmatter() {
       const md = new MarkdownIt()
-        .use(frontMatterPlugin, () => {})
-        .use(bdMarkdownItPlugin)
+      md.block.ruler.before('fence', 'front_matter', (state, startLine, endLine, silent) => {
+        if (startLine !== 0 || state.tShift[startLine] !== 0) return false
+        const firstLine = state.src.slice(state.bMarks[startLine], state.eMarks[startLine]).replace(/\s+$/, '')
+        if (firstLine !== '---') return false
+        let nextLine = startLine + 1
+        let foundEnd = false
+        for (; nextLine < endLine; nextLine++) {
+          if (state.tShift[nextLine] !== 0) continue
+          const line = state.src.slice(state.bMarks[nextLine], state.eMarks[nextLine]).replace(/\s+$/, '')
+          if (line === '---') { foundEnd = true; break }
+        }
+        if (!foundEnd) return false
+        if (silent) return true
+        const contentStart = state.bMarks[startLine + 1]
+        const contentEnd = state.bMarks[nextLine]
+        const rawContent = state.src.slice(contentStart, contentEnd).replace(/\n$/, '')
+        const token = state.push('front_matter', '', 0)
+        token.block = true
+        token.hidden = false
+        token.markup = '---'
+        token.map = [startLine, nextLine + 1]
+        token.meta = { content: rawContent }
+        state.line = nextLine + 1
+        return true
+      }, { alt: ['paragraph', 'reference', 'blockquote', 'list'] })
+      // Simulate VS Code's default front_matter renderer (table style)
+      md.renderer.rules.front_matter = (tokens, idx) => {
+        const meta = tokens[idx].meta as { content?: string } | undefined
+        return `<table class="bd-test-fm"><tbody><tr><td>${meta?.content ?? ''}</td></tr></tbody></table>\n`
+      }
+      md.use(bdMarkdownItPlugin)
+      return md
+    }
+
+    it('hides front-matter containing bd-share marker', () => {
+      setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+      const md = makeMdWithVsCodeFrontmatter()
       const html = md.render('---\nbd-share: true\n---\n\n# Title')
-      // front-matter token rendered to empty string when bd-share present
       expect(html).not.toContain('bd-share')
+      expect(html).not.toContain('bd-test-fm')   // default renderer should have been suppressed
       expect(html).toContain('<h1>Title</h1>')
     })
 
-    it('renders front-matter normally when bd-share is absent', async () => {
+    it('renders front-matter normally when bd-share is absent', () => {
       setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
-      const seen: string[] = []
-      const frontMatterPlugin = (await import('markdown-it-front-matter')).default
-      const md = new MarkdownIt()
-        .use(frontMatterPlugin, (fm: string) => seen.push(fm))
-        .use(bdMarkdownItPlugin)
-      md.render('---\ntitle: Foo\ntags: [x]\n---\n\n# Title')
-      // default front_matter renderer returns '' anyway in our test setup,
-      // but the plugin's parse callback should see the unmodified content
-      expect(seen[0]).toContain('title: Foo')
-      expect(seen[0]).not.toContain('bd-share')
+      const md = makeMdWithVsCodeFrontmatter()
+      const html = md.render('---\ntitle: Foo\ntags: [x]\n---\n\n# Title')
+      expect(html).toContain('bd-test-fm')   // default renderer ran
+      expect(html).toContain('title: Foo')
+      expect(html).not.toContain('bd-share')
     })
   })
 

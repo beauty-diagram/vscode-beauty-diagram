@@ -101,17 +101,22 @@ interface FrontMatterMetaShape {
   content: string
 }
 
-function readFrontMatterContent(
-  tokens: ReadonlyArray<{ type: string; content: string; meta?: unknown }>,
-): string {
-  const fm = tokens.find((t) => t.type === 'front_matter')
-  if (!fm) return ''
-  const meta = fm.meta
+/** Extract the raw YAML body from a single front_matter token, probing
+ *  the three shapes we've seen in the wild. Returns '' if none match. */
+function tokenFrontMatterText(token: { content: string; meta?: unknown }): string {
+  const meta = token.meta
   if (meta && typeof meta === 'object' && typeof (meta as FrontMatterMetaShape).content === 'string') {
     return (meta as FrontMatterMetaShape).content
   }
   if (typeof meta === 'string') return meta
-  return fm.content || ''
+  return token.content || ''
+}
+
+function readFrontMatterContent(
+  tokens: ReadonlyArray<{ type: string; content: string; meta?: unknown }>,
+): string {
+  const fm = tokens.find((t) => t.type === 'front_matter')
+  return fm ? tokenFrontMatterText(fm) : ''
 }
 
 function detectPageMode(
@@ -127,14 +132,16 @@ function detectPageMode(
 
 export function bdMarkdownItPlugin(md: MarkdownIt): void {
   // Suppress the front-matter render when our `bd-share` marker is present.
-  // VS Code (or one of the popular markdown extensions like Markdown All in One)
-  // renders YAML front-matter as a visible chip / table in the preview, which
-  // surfaces our internal plugin marker as if it were user-facing metadata.
-  // We only hide it when bd-share is in there — other front-matter (tags,
-  // title, custom user keys) renders normally.
+  // VS Code renders YAML front-matter as a visible table chip in the preview
+  // (markdown.preview.frontMatter setting, default 'table'), which surfaces
+  // our internal plugin marker as if it were user-facing metadata.
+  //
+  // VS Code stores the raw YAML in `token.meta.content`, not `token.content`
+  // (same gotcha as detectPageMode — see comment above). The original 0.1.13
+  // attempt read token.content and silently never matched in production.
   const defaultFrontMatter = md.renderer.rules.front_matter
   md.renderer.rules.front_matter = (tokens, idx, options, env, self) => {
-    const content = tokens[idx].content
+    const content = tokenFrontMatterText(tokens[idx])
     if (/^bd-share\s*:/m.test(content)) {
       return ''
     }
