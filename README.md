@@ -15,7 +15,7 @@ The same `flowchart LR` source, three different themes:
 ## Features
 
 - **9 polished themes**: Classic, Modern, Slate (Free); Atlas, Obsidian, Brutalist, Atelier (Pro); Blueprint, Memphis (Premium)
-- **Per-block override** via `%% bd:theme=memphis` (mermaid) / `' bd:theme=memphis` (plantuml) directive
+- **Per-block override** via `%% bd:theme=classic` (mermaid) / `' bd:theme=classic` (plantuml) directive
 - **`↗ Open in Beauty Diagram editor` CodeLens** above every fence — one click to fullscreen edit, export, share
 - **Source injection commands** — write portable `<img>` references into your Markdown so diagrams render in GitHub READMEs, blog static sites, and Notion paste
 - **PlantUML supported** with the same theme pipeline (no local Java setup)
@@ -47,13 +47,13 @@ Open any `.md` file with a `mermaid` or `plantuml` fence. Open the preview (`Cmd
 
 ````md
 ```mermaid
-%% bd:theme=memphis
+%% bd:theme=classic
 flowchart LR
   A --> B
 ```
 ````
 
-For PlantUML, use `' bd:theme=memphis` instead.
+For PlantUML, use `' bd:theme=classic` instead.
 
 ### Share mode (Pro+, per-page opt-in)
 
