@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.18 — 2026-05-22
+
+### Docs
+
+- **readme**: align theme example with `classic` not `memphis`
+
 ## 0.1.17 — 2026-05-22
 
 ### Chores
