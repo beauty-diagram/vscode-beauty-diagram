@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.19 — 2026-05-22
+
+### Added
+
+- **Per-page image width override** via `bd-width` front-matter. Three-layer cascade — page override → workspace setting → CSS default (`max-width: 100%`). Accepts `full`, `<n>px`, `<n>%`, `<n>em`, `<n>rem`. Coexists with `bd-share` on the same page.
+- **New setting `beautyDiagram.defaultImageWidth`** with the four presets (`full` / `800px` / `640px` / `480px`) surfaced as examples; accepts any CSS length.
+- **New command "Beauty Diagram: Set image width for this page"** — opens a QuickPick listing the four presets + a Remove option. Same UX pattern as VS Code's "Change Language Mode" command. Writes / removes `bd-width:` in the active document's YAML front-matter and refreshes the Markdown Preview.
+
+### Internal
+
+- New pure module `src/image-width.ts` (byte-for-byte sync with the Obsidian repo's same file). 37 unit tests for whitelist validation, XSS guards, idempotent front-matter rewriting, and the cascade resolution.
+- markdown-it fence rule now threads `widthStyle` through `renderDiagramImg`. Emits `style="max-width: ...;"` inline on the `<img>` when the effective width is anything but `full`; emits no `style` attr for `full` so the CSS default applies (and user `markdown.styles` overrides remain authoritative).
+
 ## 0.1.18 — 2026-05-22
 
 ### Docs

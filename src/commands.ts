@@ -2,6 +2,8 @@ import * as vscode from 'vscode'
 import MarkdownIt from 'markdown-it'
 import { injectEmbeds, cleanEmbeds } from './injection'
 import { parsePageMode, setPageShareMode } from './share-mode'
+import { IMAGE_WIDTH_PRESETS, setPageWidth } from './image-width'
+import type { ImageWidthValue } from './image-width'
 import { parseDirective } from './directives'
 import { getConfig } from './settings'
 import { editorLink } from './editor-link'
@@ -315,6 +317,55 @@ export function registerCommands(
           'Beauty Diagram: share mode disabled. This page renders anonymously (watermark).',
         )
       }
+    }),
+
+    // Two-step picker: command palette entry opens a QuickPick listing
+    // the 4 width presets + a "Remove override" option. Same UX pattern
+    // as VS Code's "Change Language Mode" — one discoverable command
+    // in the palette, every preset two keystrokes away.
+    //
+    // The custom `widthValue` field is named to avoid clashing with
+    // QuickPickItem's own `kind` field (which is reserved for
+    // QuickPickItemKind.Separator / .Default).
+    vscode.commands.registerCommand('beautyDiagram.setImageWidth', async () => {
+      const doc = await findActiveMarkdownDocument()
+      if (!doc) {
+        vscode.window.showWarningMessage('Beauty Diagram: open a Markdown file first.')
+        return
+      }
+
+      interface WidthPick extends vscode.QuickPickItem {
+        widthValue: ImageWidthValue | null
+      }
+      const items: WidthPick[] = [
+        ...IMAGE_WIDTH_PRESETS.map((p) => ({
+          label: p.label,
+          widthValue: p.value as ImageWidthValue | null,
+        })),
+        {
+          label: '$(trash) Remove override (use workspace default)',
+          widthValue: null,
+        },
+      ]
+      const pick = await vscode.window.showQuickPick<WidthPick>(items, {
+        placeHolder: 'Pick a max-width for diagrams on this page…',
+        title: 'Beauty Diagram: Set image width',
+      })
+      if (!pick) return
+
+      const original = doc.getText()
+      const updated = setPageWidth(original, pick.widthValue)
+      if (updated === original) {
+        vscode.window.showInformationMessage('Beauty Diagram: image width unchanged.')
+        return
+      }
+      await replaceEntireDocument(doc, updated)
+      await refreshActivePreview()
+      vscode.window.showInformationMessage(
+        pick.widthValue === null
+          ? 'Beauty Diagram: removed bd-width override.'
+          : `Beauty Diagram: set image width to ${pick.widthValue}.`,
+      )
     }),
 
     vscode.commands.registerCommand('beautyDiagram.openInEditor', (args: OpenInEditorArgs) => {

@@ -2,7 +2,7 @@
   "name": "beauty-diagram",
   "displayName": "Beauty Diagram",
   "description": "Beautify Mermaid and PlantUML in VS Code Markdown Preview — 9 deck-ready themes, dark-mode friendly, no setup.",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "publisher": "beauty-diagram",
   "engines": {
     "vscode": "^1.85.0"
@@ -58,6 +58,17 @@
           "default": "classic",
           "description": "Default theme for blocks without an inline directive."
         },
+        "beautyDiagram.defaultImageWidth": {
+          "type": "string",
+          "default": "full",
+          "markdownDescription": "Workspace default max-width for rendered diagrams. Override per page by adding `bd-width: 800px` to the markdown front-matter (or use **Beauty Diagram: Set image width for this page**). Accepts the four presets below or any CSS length (e.g. `720px`, `75%`, `40em`).",
+          "examples": [
+            "full",
+            "800px",
+            "640px",
+            "480px"
+          ]
+        },
         "beautyDiagram.replaceMermaid": {
           "type": "boolean",
           "default": true,
@@ -90,6 +101,10 @@
       {
         "command": "beautyDiagram.toggleShareMode",
         "title": "Beauty Diagram: Toggle share mode for this page"
+      },
+      {
+        "command": "beautyDiagram.setImageWidth",
+        "title": "Beauty Diagram: Set image width for this page"
       },
       {
         "command": "beautyDiagram.openInEditor",

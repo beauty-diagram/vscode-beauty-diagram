@@ -2,6 +2,11 @@ import type MarkdownIt from 'markdown-it'
 import { composeUrl } from './url-composer'
 import { parseDirective } from './directives'
 import { parsePageMode } from './share-mode'
+import {
+  parsePageWidth,
+  resolveEffectiveWidth,
+  widthToInlineStyle,
+} from './image-width'
 import { getConfig } from './settings'
 import { ANON_SOURCE_BYTE_CAP } from './constants'
 import { shortHashSync } from './hash'
@@ -73,10 +78,15 @@ function renderDiagramImg(opts: {
   alt: string
   sourceFormat: SourceFormat
   mode: PageMode
+  /** Optional `max-width: <value>;` style fragment from image-width.ts.
+   *  Empty string when the effective width is `'full'` (CSS default
+   *  `.bd-img { max-width: 100% }` takes over). */
+  widthStyle?: string
 }): string {
+  const style = opts.widthStyle ? ` style="${escapeHtml(opts.widthStyle)}"` : ''
   return (
     `<img class="bd-img" src="${escapeHtml(opts.src)}" alt="${opts.alt}" ` +
-    `data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}" />\n`
+    `data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}"${style} />\n`
   )
 }
 
@@ -128,6 +138,21 @@ function detectPageMode(
   const fm = readFrontMatterContent(tokens)
   if (!fm) return 'anonymous'
   return parsePageMode(`---\n${fm}\n---\n`)
+}
+
+/**
+ * Detect the `bd-width` value from the front-matter token. Returns
+ * a validated string (`'full'` | `<n>px` | ...) or `null` when absent /
+ * rejected by the whitelist. Caller passes the result through
+ * `resolveEffectiveWidth()` to apply the cascade against the workspace
+ * setting default.
+ */
+function detectPageWidth(
+  tokens: ReadonlyArray<{ type: string; content: string; meta?: unknown }>,
+): string | null {
+  const fm = readFrontMatterContent(tokens)
+  if (!fm) return null
+  return parsePageWidth(`---\n${fm}\n---\n`)
 }
 
 export function bdMarkdownItPlugin(md: MarkdownIt): void {
@@ -182,6 +207,16 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     // never made it to the fence rule. See readFrontMatterContent doc.
     const pageMode: PageMode = detectPageMode(tokens)
 
+    // Resolve effective image max-width once per fence: page front-matter
+    // override → workspace setting default → 'full' (no inline style).
+    // Same cascade as the Obsidian plugin; whitelist validation in
+    // resolveEffectiveWidth() means invalid front-matter never reaches
+    // the HTML attribute.
+    const pageWidth = detectPageWidth(tokens)
+    const settingWidth = getConfig('defaultImageWidth')
+    const effectiveWidth = resolveEffectiveWidth(pageWidth, settingWidth)
+    const widthStyle = widthToInlineStyle(effectiveWidth)
+
     // share mode + extension context wired + cache hit → emit /v1/share/<token>.svg
     // share mode + cache miss → fall through to anonymous and prepend a hint
     //   (the user needs to run `Beauty Diagram: Toggle share mode` to pre-fetch
@@ -196,6 +231,7 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
           alt: escapeHtml(firstLine(cleanSource)),
           sourceFormat,
           mode: 'share',
+          widthStyle,
         })
       }
       // cache miss in share mode — fall through to anonymous; no hint banner
@@ -217,6 +253,7 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
         alt: escapeHtml(firstLine(cleanSource)),
         sourceFormat,
         mode: pageMode,
+        widthStyle,
       })
     }
 
