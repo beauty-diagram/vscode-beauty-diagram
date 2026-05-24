@@ -4,3 +4,9 @@ dist/
 *.log
 .DS_Store
 .env
+
+# Agent notes (private, not committed)
+CLAUDE.md
+
+# Agent notes (private, not committed)
+CLAUDE.md
