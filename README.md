@@ -2,6 +2,8 @@
 
 > **Make every `` ```mermaid `` and `` ```plantuml `` block in your Markdown Preview look like a deck slide — 9 themes, dark-mode friendly, zero setup.**
 
+**Works in VS Code, Cursor, Windsurf, VSCodium, Gitpod, and GitHub Codespaces** — same extension, published to both VS Code Marketplace and [Open VSX](https://open-vsx.org/extension/beauty-diagram/beauty-diagram).
+
 This extension intercepts mermaid and plantuml fenced code blocks in VS Code's built-in Markdown Preview and renders them via the [Beauty Diagram](https://www.beauty-diagram.com) API. Same render quality as Obsidian, Notion embeds, and the standalone editor.
 
 ## See it in action
