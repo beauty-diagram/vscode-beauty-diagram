@@ -84,15 +84,15 @@
     "commands": [
       {
         "command": "beautyDiagram.injectCurrentFile",
-        "title": "Beauty Diagram: Inject embed URLs in current file"
+        "title": "Beauty Diagram: Embed share URLs into this note"
       },
       {
         "command": "beautyDiagram.injectWorkspace",
-        "title": "Beauty Diagram: Inject embed URLs in workspace"
+        "title": "Beauty Diagram: Embed share URLs into this workspace"
       },
       {
         "command": "beautyDiagram.cleanWorkspace",
-        "title": "Beauty Diagram: Clean orphan embed URLs in workspace"
+        "title": "Beauty Diagram: Clean orphan embeds in workspace"
       },
       {
         "command": "beautyDiagram.verifyApiKey",
@@ -100,7 +100,7 @@
       },
       {
         "command": "beautyDiagram.toggleShareMode",
-        "title": "Beauty Diagram: Toggle share mode for this page"
+        "title": "Beauty Diagram: Toggle watermark-free preview for this page"
       },
       {
         "command": "beautyDiagram.setImageWidth",

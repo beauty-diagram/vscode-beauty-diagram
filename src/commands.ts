@@ -143,7 +143,7 @@ export function registerCommands(
         return
       }
       const choice = await vscode.window.showInformationMessage(
-        `Inject embed URLs in ${files.length} Markdown files?`,
+        `Embed share URLs into ${files.length} Markdown files?`,
         { modal: true }, 'Run', 'Cancel',
       )
       if (choice !== 'Run') return
@@ -255,7 +255,7 @@ export function registerCommands(
       if (!apiKey) {
         vscode.window.showInformationMessage(
           'Set your Beauty Diagram API key in settings (beautyDiagram.apiKey) first, then run this command. ' +
-            'Share mode requires an authenticated key to call /v1/share.',
+            'Watermark-free preview requires an API key to mint share tokens.',
         )
         return
       }
@@ -263,7 +263,7 @@ export function registerCommands(
       const plan = await deps.getUsageCache().getPlan()
       if (plan === 'free') {
         const choice = await vscode.window.showInformationMessage(
-          'Share mode requires a Pro plan. Free users still get unlimited anonymous preview (watermarked).',
+          'Watermark-free preview requires a Pro plan. Free users still get unlimited anonymous preview (watermarked).',
           'Open pricing',
           'Cancel',
         )
@@ -295,18 +295,18 @@ export function registerCommands(
         )
         if (result.kind === 'cancelled') {
           vscode.window.showInformationMessage(
-            `Beauty Diagram: pre-fetch cancelled (${result.fetched} cached, ${result.reused} reused). Share mode not enabled.`,
+            `Beauty Diagram: pre-fetch cancelled (${result.fetched} cached, ${result.reused} reused). Watermark-free preview not enabled.`,
           )
           return
         }
         if (result.kind === 'error') {
-          vscode.window.showErrorMessage(`Beauty Diagram: share-mode pre-fetch failed (${result.message})`)
+          vscode.window.showErrorMessage(`Beauty Diagram: watermark-free pre-fetch failed (${result.message})`)
           return
         }
         if (updated !== original) await replaceEntireDocument(doc, updated)
         await refreshActivePreview()
         vscode.window.showInformationMessage(
-          `Beauty Diagram: share mode enabled. ${result.fetched} new diagram(s) cached` +
+          `Beauty Diagram: watermark-free preview enabled. ${result.fetched} new diagram(s) cached` +
             (result.reused > 0 ? ` (${result.reused} already in cache)` : '') +
             '. First preview consumes 1 share quota per unique diagram.',
         )
@@ -314,7 +314,7 @@ export function registerCommands(
         if (updated !== original) await replaceEntireDocument(doc, updated)
         await refreshActivePreview()
         vscode.window.showInformationMessage(
-          'Beauty Diagram: share mode disabled. This page renders anonymously (watermark).',
+          'Beauty Diagram: watermark-free preview disabled. This page renders anonymously (watermark).',
         )
       }
     }),

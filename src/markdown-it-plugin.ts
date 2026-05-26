@@ -258,7 +258,7 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     }
 
     // over-size-cap — fall back to default renderer + show note
-    const note = `<div class="bd-note">Diagram source exceeds ${Math.round(ANON_SOURCE_BYTE_CAP / 1024)} KB. Enable share mode for this page (<code>Beauty Diagram: Toggle share mode</code>) or run <code>Beauty Diagram: Inject embed URLs</code> to produce a saved share URL.</div>\n`
+    const note = `<div class="bd-note">Diagram source exceeds ${Math.round(ANON_SOURCE_BYTE_CAP / 1024)} KB. Enable watermark-free preview (<code>Beauty Diagram: Toggle watermark-free preview for this page</code>) or run <code>Beauty Diagram: Embed share URLs into this note</code> to bake a saved share URL.</div>\n`
     const fallback = defaultFence
       ? defaultFence(tokens, idx, options, env, self)
       : self.renderToken(tokens, idx, options)
