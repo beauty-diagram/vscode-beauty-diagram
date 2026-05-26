@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.20 — 2026-05-26
+
+### Docs
+
+- **readme**: lead with cross-IDE compatibility (Cursor / Windsurf / VSCodium)
+
+### Chores
+
+- gitignore local CLAUDE.md agent-notes file
+
+### Other
+
+- rename commands to clarify "preview" vs "embed for sharing" intent
+
 ## 0.1.19 — 2026-05-22
 
 ### Added
