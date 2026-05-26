@@ -1,0 +1,20 @@
+/* Beauty Diagram — Markdown Preview styles injected via
+ * `contributes.markdown.previewStyles`. Loaded into VS Code's Markdown
+ * Preview webview alongside the user's own preview styles.
+ *
+ * Keep this file scoped tightly to `.bd-img` (the live-preview img class)
+ * and other plugin-owned classes — the same webview also displays user
+ * notes that we should not restyle. */
+
+/* Each Beauty Diagram render takes its own row. Default browser behavior
+ * lays out adjacent `<img>` siblings as inline elements, so two narrow
+ * preview-renders (e.g. bd-width: 320px) used to sit side-by-side on
+ * wide VS Code preview panes. The embed-URL form (HTML `<img>` written
+ * into the markdown source) handles this via inline style; the
+ * preview-time render path is class-based and uses this rule.
+ *
+ * Block-level also gives the per-image `↗ Open in editor` hover overlay
+ * a sane bounding box to position against. */
+.bd-img {
+  display: block;
+}

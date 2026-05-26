@@ -28,6 +28,9 @@
     "markdown.previewScripts": [
       "./preview/hide-bd-share.js"
     ],
+    "markdown.previewStyles": [
+      "./preview/bd-preview.css"
+    ],
     "configuration": {
       "title": "Beauty Diagram",
       "properties": {
