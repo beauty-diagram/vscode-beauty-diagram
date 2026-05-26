@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.23 — 2026-05-26
+
+### Features
+
+- **image-width**: rescale presets to stay distinct in narrow containers
+
 ## 0.1.22 — 2026-05-26
 
 ### Fixes
