@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.22 — 2026-05-26
+
+### Fixes
+
+- **inject**: upgrade stale ![]() embeds when bd-width is newly set
+
 ## 0.1.21 — 2026-05-26
 
 ### Features

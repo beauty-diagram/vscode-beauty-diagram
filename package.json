@@ -2,7 +2,7 @@
   "name": "beauty-diagram",
   "displayName": "Beauty Diagram",
   "description": "Beautify Mermaid and PlantUML in VS Code Markdown Preview — 9 deck-ready themes, dark-mode friendly, no setup.",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "publisher": "beauty-diagram",
   "engines": {
     "vscode": "^1.85.0"
