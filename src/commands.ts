@@ -2,7 +2,13 @@ import * as vscode from 'vscode'
 import MarkdownIt from 'markdown-it'
 import { injectEmbeds, cleanEmbeds } from './injection'
 import { parsePageMode, setPageShareMode } from './share-mode'
-import { IMAGE_WIDTH_PRESETS, setPageWidth } from './image-width'
+import {
+  IMAGE_WIDTH_PRESETS,
+  parsePageWidth,
+  resolveEffectiveWidth,
+  setPageWidth,
+  widthToInlineStyle,
+} from './image-width'
 import type { ImageWidthValue } from './image-width'
 import { parseDirective } from './directives'
 import { getConfig } from './settings'
@@ -116,10 +122,17 @@ export function registerCommands(
           // easily increment per fence without forking the injection module,
           // so we show indeterminate progress with a meaningful subtitle.
           progress.report({ message: doc.uri.path.split('/').pop() ?? 'current file' })
+          // Resolve bd-width for this file (front-matter → workspace
+          // setting → 'full') and pass as an inline style so the
+          // injected <img> honors per-page sizing outside VS Code.
+          const pageWidth = parsePageWidth(original)
+          const effectiveWidth = resolveEffectiveWidth(pageWidth, getConfig('defaultImageWidth'))
+          const widthStyle = widthToInlineStyle(effectiveWidth)
           const updated = await injectEmbeds(original, {
             theme: getConfig('defaultTheme'),
             hasApiKey: !!getConfig('apiKey'),
             apiBase: getConfig('apiBase'),
+            widthStyle: widthStyle || null,
             shareIdForSource: makeCancellableResolver(makeShareIdResolver(), cancel),
           })
           if (cancel.isCancellationRequested) {
@@ -165,10 +178,15 @@ export function registerCommands(
             progress.report({ message: `${i + 1} / ${files.length} · ${rel}`, increment: step })
             const bytes = await vscode.workspace.fs.readFile(uri)
             const original = new TextDecoder().decode(bytes)
+            // bd-width is per-file — recompute for each file in the loop.
+            const pageWidth = parsePageWidth(original)
+            const effectiveWidth = resolveEffectiveWidth(pageWidth, getConfig('defaultImageWidth'))
+            const widthStyle = widthToInlineStyle(effectiveWidth)
             const updated = await injectEmbeds(original, {
               theme: getConfig('defaultTheme'),
               hasApiKey: !!getConfig('apiKey'),
               apiBase: getConfig('apiBase'),
+              widthStyle: widthStyle || null,
               shareIdForSource: resolver,
             })
             if (updated !== original) {

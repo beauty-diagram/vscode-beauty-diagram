@@ -9,6 +9,16 @@ interface InjectOptions {
   apiBase?: string
   /** Return cached share id for this source/theme, or null. Plugin wires this. */
   shareIdForSource: (source: string, theme: string, sourceFormat: SourceFormat) => Promise<string | null>
+  /**
+   * Optional inline style string applied to every injected `<img>` (e.g.
+   * `"max-width: 800px"`). When present, the embed marker switches from
+   * markdown image syntax `![]()` to HTML `<img>` form to carry the
+   * style. Callers compute this from the page's `bd-width` front-matter
+   * (via `resolveEffectiveWidth` + `widthToInlineStyle`); when null /
+   * empty / "full" the embed stays in markdown form for parity with the
+   * `bd` CLI's `extract --share` output.
+   */
+  widthStyle?: string | null
 }
 
 // Match fenced code blocks for mermaid/plantuml
@@ -58,7 +68,10 @@ export async function injectEmbeds(markdown: string, opts: InjectOptions): Promi
     }
 
     const url = await urlForSource(cleanSource, theme, f.type, opts)
-    const block = `\n\n<!-- bd:inline-img hash=${hash} -->\n![Diagram ${counter}](${url})\n<!-- /bd:inline-img -->`
+    const inner = opts.widthStyle
+      ? `<img alt="Diagram ${counter}" src="${url}" style="${escapeHtmlAttr(opts.widthStyle)}">`
+      : `![Diagram ${counter}](${url})`
+    const block = `\n\n<!-- bd:inline-img hash=${hash} -->\n${inner}\n<!-- /bd:inline-img -->`
 
     if (markerMatch) {
       // Replace stale marker block (preserve the leading newlines before the marker)
@@ -98,6 +111,16 @@ async function urlForSource(
   if (r.kind === 'anonymous') return r.url
   // Anonymous over-size path: returns sentinel so caller / <img> error UI can react.
   return '#bd-error-needs-share'
+}
+
+/**
+ * Minimal HTML attribute escaper for the inline style we own (we never
+ * accept arbitrary user input here — `widthStyle` comes from our own
+ * `widthToInlineStyle` whitelist — but defense-in-depth in case the
+ * settings module ever loosens validation).
+ */
+function escapeHtmlAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 export async function cleanEmbeds(markdown: string): Promise<string> {

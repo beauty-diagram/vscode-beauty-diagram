@@ -25,6 +25,27 @@ describe('injectEmbeds', () => {
     expect(out).toContain('![Diagram 2]')
   })
 
+  it('emits <img> form with inline style when widthStyle is provided', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    const out = await injectEmbeds(md, { ...opts, widthStyle: 'max-width: 800px' })
+    expect(out).toContain('<img alt="Diagram 1"')
+    expect(out).toContain('style="max-width: 800px"')
+    expect(out).not.toMatch(/!\[Diagram 1\]\(/)
+    // Marker shape stays the same → still idempotent + clean-able
+    expect(out).toMatch(/<!-- bd:inline-img hash=[0-9a-f]{8} -->/)
+    expect(out).toContain('<!-- /bd:inline-img -->')
+  })
+
+  it('falls back to markdown image form when widthStyle is empty/null', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    const out1 = await injectEmbeds(md, { ...opts, widthStyle: null })
+    const out2 = await injectEmbeds(md, { ...opts, widthStyle: '' })
+    expect(out1).toMatch(/!\[Diagram 1\]\(/)
+    expect(out2).toMatch(/!\[Diagram 1\]\(/)
+    expect(out1).not.toContain('<img')
+    expect(out2).not.toContain('<img')
+  })
+
   it('is idempotent when hash matches', async () => {
     const md = '```mermaid\nA --> B\n```'
     const first = await injectEmbeds(md, opts)
