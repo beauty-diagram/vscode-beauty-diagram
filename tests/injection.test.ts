@@ -25,11 +25,13 @@ describe('injectEmbeds', () => {
     expect(out).toContain('![Diagram 2]')
   })
 
-  it('emits <img> form with inline style when widthStyle is provided', async () => {
+  it('emits <img> form with inline style + display:block when widthStyle is provided', async () => {
     const md = '```mermaid\nA --> B\n```'
     const out = await injectEmbeds(md, { ...opts, widthStyle: 'max-width: 800px' })
     expect(out).toContain('<img alt="Diagram 1"')
-    expect(out).toContain('style="max-width: 800px"')
+    // display:block forces each embed onto its own row when multiple
+    // narrow embeds would otherwise sit as inline siblings.
+    expect(out).toContain('style="max-width: 800px; display: block"')
     expect(out).not.toMatch(/!\[Diagram 1\]\(/)
     // Marker shape stays the same → still idempotent + clean-able
     expect(out).toMatch(/<!-- bd:inline-img hash=[0-9a-f]{8} -->/)
@@ -47,7 +49,7 @@ describe('injectEmbeds', () => {
     const upgraded = await injectEmbeds(baseline, { ...opts, widthStyle: 'max-width: 640px' })
     expect(upgraded).not.toBe(baseline)
     expect(upgraded).toContain('<img alt="Diagram 1"')
-    expect(upgraded).toContain('style="max-width: 640px"')
+    expect(upgraded).toContain('style="max-width: 640px; display: block"')
     expect(upgraded).not.toMatch(/!\[Diagram 1\]\(/)
   })
 
@@ -65,8 +67,64 @@ describe('injectEmbeds', () => {
     const md = '```mermaid\nA --> B\n```'
     const first = await injectEmbeds(md, { ...opts, widthStyle: 'max-width: 800px' })
     const second = await injectEmbeds(first, { ...opts, widthStyle: 'max-width: 480px' })
-    expect(second).toContain('style="max-width: 480px"')
-    expect(second).not.toContain('style="max-width: 800px"')
+    expect(second).toContain('style="max-width: 480px; display: block"')
+    expect(second).not.toContain('max-width: 800px')
+  })
+
+  it('refreshOnly mode preserves URL when updating style — never re-mints', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    // Initial inject with a resolver returning a stable token
+    const initial = await injectEmbeds(md, {
+      ...opts,
+      widthStyle: 'max-width: 960px',
+      shareIdForSource: async () => 'tok_original',
+    })
+    expect(initial).toContain('v1/share/tok_original.svg')
+    expect(initial).toContain('style="max-width: 960px; display: block"')
+
+    // Now "change bd-width" via refreshOnly — supply a resolver that WOULD
+    // mint a different token if called, but refreshOnly must reuse the
+    // existing URL verbatim instead.
+    const refreshed = await injectEmbeds(initial, {
+      ...opts,
+      widthStyle: 'max-width: 320px',
+      refreshOnly: true,
+      shareIdForSource: async () => 'tok_BUG_should_not_appear',
+    })
+    expect(refreshed).toContain('v1/share/tok_original.svg')
+    expect(refreshed).not.toContain('tok_BUG_should_not_appear')
+    expect(refreshed).toContain('style="max-width: 320px; display: block"')
+    expect(refreshed).not.toContain('max-width: 960px')
+  })
+
+  it('refreshOnly mode does not add embeds to bare fences', async () => {
+    const md = '```mermaid\nA --> B\n```'  // no marker yet
+    const out = await injectEmbeds(md, {
+      ...opts,
+      widthStyle: 'max-width: 320px',
+      refreshOnly: true,
+    })
+    expect(out).toBe(md)  // truly untouched
+  })
+
+  it('refreshOnly mode also downgrades HTML form back to markdown when widthStyle is cleared', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    const withStyle = await injectEmbeds(md, {
+      ...opts,
+      widthStyle: 'max-width: 800px',
+      shareIdForSource: async () => 'tok_xyz',
+    })
+    expect(withStyle).toContain('<img')
+    // refreshOnly + cleared widthStyle: rewrite back to ![](url) markdown form
+    const cleared = await injectEmbeds(withStyle, {
+      ...opts,
+      widthStyle: null,
+      refreshOnly: true,
+      shareIdForSource: async () => 'tok_BUG_should_not_appear',
+    })
+    expect(cleared).toMatch(/!\[Diagram 1\]\(.*tok_xyz/)
+    expect(cleared).not.toContain('<img')
+    expect(cleared).not.toContain('tok_BUG_should_not_appear')
   })
 
   it('falls back to markdown image form when widthStyle is empty/null', async () => {

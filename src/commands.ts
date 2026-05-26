@@ -372,11 +372,31 @@ export function registerCommands(
       if (!pick) return
 
       const original = doc.getText()
-      const updated = setPageWidth(original, pick.widthValue)
-      if (updated === original) {
+      const withFm = setPageWidth(original, pick.widthValue)
+      if (withFm === original) {
         vscode.window.showInformationMessage('Beauty Diagram: image width unchanged.')
         return
       }
+
+      // Also refresh inline style on existing embed `<img>` tags so any
+      // previously-injected embeds visually match the new bd-width
+      // without the user manually re-running "Embed share URLs".
+      // refreshOnly reuses each embed's existing URL verbatim — no
+      // fresh share tokens are minted, no share quota is consumed.
+      const pageWidth = parsePageWidth(withFm)
+      const effectiveWidth = resolveEffectiveWidth(pageWidth, getConfig('defaultImageWidth'))
+      const widthStyle = widthToInlineStyle(effectiveWidth)
+      const updated = await injectEmbeds(withFm, {
+        theme: getConfig('defaultTheme'),
+        hasApiKey: !!getConfig('apiKey'),
+        apiBase: getConfig('apiBase'),
+        widthStyle: widthStyle || null,
+        refreshOnly: true,
+        // refreshOnly never calls shareIdForSource (URL is preserved),
+        // so this resolver is just a placeholder satisfying the type.
+        shareIdForSource: async () => null,
+      })
+
       await replaceEntireDocument(doc, updated)
       await refreshActivePreview()
       vscode.window.showInformationMessage(

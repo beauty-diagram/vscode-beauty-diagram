@@ -19,6 +19,26 @@ interface InjectOptions {
    * `bd` CLI's `extract --share` output.
    */
   widthStyle?: string | null
+  /**
+   * When true, only refresh the inline `style` attribute on existing
+   * hash-matching embed markers — never mint new share URLs, never add
+   * new embeds to fences that don't have one. Used by the "Set image
+   * width for this page" command so changing `bd-width` instantly
+   * updates the visual size of already-published embeds without
+   * silently consuming a fresh share quota for each fence.
+   */
+  refreshOnly?: boolean
+}
+
+/**
+ * Build the full inline style value for the embed `<img>`. Appends
+ * `display: block` so multiple narrow embeds stack vertically instead
+ * of laying out as inline siblings on a single row (which is what most
+ * markdown renderers default to for adjacent `<img>` tags).
+ */
+function buildImgStyle(widthStyle: string | null | undefined): string {
+  if (!widthStyle) return ''
+  return `${widthStyle}; display: block`
 }
 
 // Match fenced code blocks for mermaid/plantuml
@@ -61,6 +81,9 @@ export async function injectEmbeds(markdown: string, opts: InjectOptions): Promi
       /^(\n+)(<!-- bd:inline-img hash=([0-9a-f]{8}) -->[\s\S]*?<!-- \/bd:inline-img -->)\n?/
     )
 
+    const fullStyle = buildImgStyle(opts.widthStyle)
+    const escapedDesiredStyle = fullStyle ? escapeHtmlAttr(fullStyle) : ''
+
     if (markerMatch && markerMatch[3] === hash) {
       // Hash matches → source/theme/format unchanged. But the marker
       // body might still be stale if the user changed `bd-width` since
@@ -71,18 +94,39 @@ export async function injectEmbeds(markdown: string, opts: InjectOptions): Promi
       const existingBody = markerMatch[2]
       const existingStyleMatch = existingBody.match(/<img\b[^>]*\bstyle="([^"]*)"/)
       const existingStyle = existingStyleMatch ? existingStyleMatch[1] : ''
-      const desiredStyle = opts.widthStyle ? escapeHtmlAttr(opts.widthStyle) : ''
-      if (existingStyle === desiredStyle) {
+      if (existingStyle === escapedDesiredStyle) {
         counter--
         continue
       }
-      // Otherwise fall through — the replace path below rewrites the
-      // marker block with the correct form / style for current settings.
+      // Style differs — fall through to rewrite. In refreshOnly mode
+      // we reuse the existing URL to avoid silently minting a fresh
+      // share token (which would consume an extra share quota and
+      // orphan the URL already published in the markdown).
+      if (opts.refreshOnly) {
+        const existingUrl =
+          existingBody.match(/<img\b[^>]*\bsrc="([^"]*)"/)?.[1] ??
+          existingBody.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1]
+        if (existingUrl) {
+          const inner = fullStyle
+            ? `<img alt="Diagram ${counter}" src="${existingUrl}" style="${escapedDesiredStyle}">`
+            : `![Diagram ${counter}](${existingUrl})`
+          const block = `\n\n<!-- bd:inline-img hash=${hash} -->\n${inner}\n<!-- /bd:inline-img -->`
+          out = out.slice(0, f.endIdx) + block + out.slice(f.endIdx + markerMatch[0].length)
+        }
+        counter--
+        continue
+      }
+    } else if (opts.refreshOnly) {
+      // refresh-only mode + no hash-matching marker → don't add new
+      // embeds and don't replace stale-hash markers. The regular
+      // "Embed share URLs into this note" command handles those.
+      counter--
+      continue
     }
 
     const url = await urlForSource(cleanSource, theme, f.type, opts)
-    const inner = opts.widthStyle
-      ? `<img alt="Diagram ${counter}" src="${url}" style="${escapeHtmlAttr(opts.widthStyle)}">`
+    const inner = fullStyle
+      ? `<img alt="Diagram ${counter}" src="${url}" style="${escapedDesiredStyle}">`
       : `![Diagram ${counter}](${url})`
     const block = `\n\n<!-- bd:inline-img hash=${hash} -->\n${inner}\n<!-- /bd:inline-img -->`
 

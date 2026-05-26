@@ -24,16 +24,20 @@
 //   missing front-matter
 //   malformed front-matter
 //
-// The four presets surfaced in plugin UI / palette pickers. Spread is
-// tuned to stay visually distinct across both narrow containers
-// (Obsidian Reading View with Readable Line Length ON caps at ~700px)
-// and wide containers (VS Code Markdown Preview, Obsidian with the
-// readable-line setting off).
+// The four presets surfaced in plugin UI / palette pickers.
 //
+// ⚠️  This `IMAGE_WIDTH_PRESETS` array is the ONE intentional divergence
+// between the vscode-beauty-diagram and obsidian-beauty-diagram copies
+// of this otherwise byte-for-byte synced file. VS Code's Markdown
+// Preview panel is typically ~1200px wide; Obsidian's Reading View
+// container caps at ~600px (Readable Line Length on). Each client picks
+// preset values that stay visually distinct in its own container.
+//
+// VS Code presets:
 //   Full     → 'full'   (no inline style emitted; lets CSS default apply)
-//   Wide     → '960px'  (caps to container in narrow contexts; visibly wide otherwise)
-//   Medium   → '560px'  (clearly narrower than Obsidian's ~700 default container)
-//   Narrow   → '320px'  (always feels small; safe for mobile too)
+//   Wide     → '960px'  (clearly wide in VS Code's preview panel)
+//   Medium   → '560px'  (about half the typical preview width)
+//   Narrow   → '320px'  (mobile-safe; unambiguously small)
 
 export type ImageWidthValue = string // 'full' | '<n>px' | '<n>%' | '<n>em' | '<n>rem'
 
