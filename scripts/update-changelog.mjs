@@ -67,11 +67,17 @@ const groups = {
 }
 
 // Escape characters that vsce / markdown renderers misinterpret. Literal
-// `<img>` or `<svg>` in prose otherwise get parsed as HTML img/svg tags
-// with no src, which `vsce package` rejects with "Images in CHANGELOG.md
+// `<img>` / `<svg>` in prose otherwise get parsed as HTML img/svg tags
+// with no src, and bare `![]()` is parsed as a markdown image with empty
+// src — both rejected by `vsce package` with "Images in CHANGELOG.md
 // must have a source."
 function escapeMd(s) {
-  return s.replace(/</g, '\\<').replace(/>/g, '\\>')
+  return s
+    .replace(/</g, '\\<')
+    .replace(/>/g, '\\>')
+    // Markdown image opener — escape the `!` so `![](...)` in a commit
+    // subject renders as literal text instead of an empty-src image.
+    .replace(/!\[/g, '\\![')
 }
 
 for (const line of lines) {

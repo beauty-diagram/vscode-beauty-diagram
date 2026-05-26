@@ -10,7 +10,7 @@
 
 ### Fixes
 
-- **inject**: upgrade stale ![]() embeds when bd-width is newly set
+- **inject**: upgrade stale `![]()` embeds when bd-width is newly set
 
 ## 0.1.21 — 2026-05-26
 
