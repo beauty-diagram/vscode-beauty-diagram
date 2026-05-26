@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.24 — 2026-05-26
+
+### Fixes
+
+- **release**: escape \![]() in CHANGELOG so vsce package doesn't fail
+
 ## 0.1.23 — 2026-05-26
 
 ### Features
