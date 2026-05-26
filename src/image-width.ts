@@ -24,12 +24,16 @@
 //   missing front-matter
 //   malformed front-matter
 //
-// The four presets surfaced in plugin UI / palette pickers:
+// The four presets surfaced in plugin UI / palette pickers. Spread is
+// tuned to stay visually distinct across both narrow containers
+// (Obsidian Reading View with Readable Line Length ON caps at ~700px)
+// and wide containers (VS Code Markdown Preview, Obsidian with the
+// readable-line setting off).
 //
 //   Full     → 'full'   (no inline style emitted; lets CSS default apply)
-//   Wide     → '800px'
-//   Medium   → '640px'
-//   Narrow   → '480px'
+//   Wide     → '960px'  (caps to container in narrow contexts; visibly wide otherwise)
+//   Medium   → '560px'  (clearly narrower than Obsidian's ~700 default container)
+//   Narrow   → '320px'  (always feels small; safe for mobile too)
 
 export type ImageWidthValue = string // 'full' | '<n>px' | '<n>%' | '<n>em' | '<n>rem'
 
@@ -40,9 +44,9 @@ export const IMAGE_WIDTH_PRESETS: ReadonlyArray<{
   value: ImageWidthValue
 }> = [
   { id: 'full', label: 'Full', value: 'full' },
-  { id: 'wide', label: 'Wide — 800px', value: '800px' },
-  { id: 'medium', label: 'Medium — 640px', value: '640px' },
-  { id: 'narrow', label: 'Narrow — 480px', value: '480px' },
+  { id: 'wide', label: 'Wide — 960px', value: '960px' },
+  { id: 'medium', label: 'Medium — 560px', value: '560px' },
+  { id: 'narrow', label: 'Narrow — 320px', value: '320px' },
 ]
 
 /** The single-line comment we inject above the `bd-width` key. */
