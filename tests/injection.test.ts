@@ -107,6 +107,34 @@ describe('injectEmbeds', () => {
     expect(out).toBe(md)  // truly untouched
   })
 
+  it('preserves newline between marker close and next fence across many refresh cycles', async () => {
+    // Regression: a doc with two consecutive fences (embed right above
+    // the next fence) used to lose one trailing newline per refresh
+    // because the marker-match regex ate one with `\n?`. After 2-3
+    // toggles the closing `<!-- /bd:inline-img -->` collided with the
+    // next ` ```mermaid ` opener and rendering broke.
+    const md =
+      '```mermaid\nA --> B\n```\n' +
+      '\n' +
+      '```mermaid\nC --> D\n```\n'
+    let out = await injectEmbeds(md, { ...opts, widthStyle: 'max-width: 960px', shareIdForSource: async () => 'tok1' })
+    // Simulate the user picking different widths several times in a row
+    for (const w of ['max-width: 320px', 'max-width: 560px', 'max-width: 480px', 'max-width: 320px']) {
+      out = await injectEmbeds(out, {
+        ...opts,
+        widthStyle: w,
+        refreshOnly: true,
+        shareIdForSource: async () => 'tok_should_not_be_used',
+      })
+    }
+    // After many refreshes the marker close must not be on the same
+    // line as anything else — in particular not the next fence opener.
+    expect(out).not.toMatch(/<!-- \/bd:inline-img -->[^\n]/)
+    // First embed's URL must survive untouched (no silent re-mint)
+    expect(out).toContain('v1/share/tok1.svg')
+    expect(out).not.toContain('tok_should_not_be_used')
+  })
+
   it('refreshOnly mode also downgrades HTML form back to markdown when widthStyle is cleared', async () => {
     const md = '```mermaid\nA --> B\n```'
     const withStyle = await injectEmbeds(md, {

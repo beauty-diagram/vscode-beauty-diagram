@@ -76,9 +76,16 @@ export async function injectEmbeds(markdown: string, opts: InjectOptions): Promi
     // by changes we made to later fences (higher index), so f.endIdx is still valid.
     const afterFence = out.slice(f.endIdx)
 
-    // Match the embed block that immediately follows (optional whitespace/newlines between fence and marker)
+    // Match the embed block that immediately follows. NOTE: the trailing
+    // newlines after `<!-- /bd:inline-img -->` are deliberately left
+    // OUT of the match. Eating them with `\n?` here causes the
+    // replacement splice to lose one newline per refresh — after a
+    // couple of bd-width changes, the marker close ends up glued to
+    // the next `<code-fence>` opener and rendering breaks. Keeping the
+    // trailing newlines in the remainder slice means newline spacing
+    // is preserved exactly across any number of refresh cycles.
     const markerMatch = afterFence.match(
-      /^(\n+)(<!-- bd:inline-img hash=([0-9a-f]{8}) -->[\s\S]*?<!-- \/bd:inline-img -->)\n?/
+      /^(\n+)(<!-- bd:inline-img hash=([0-9a-f]{8}) -->[\s\S]*?<!-- \/bd:inline-img -->)/
     )
 
     const fullStyle = buildImgStyle(opts.widthStyle)
