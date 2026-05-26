@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.21 — 2026-05-26
+
+### Features
+
+- **inject**: propagate bd-width into embed URLs
+
 ## 0.1.20 — 2026-05-26
 
 ### Docs
