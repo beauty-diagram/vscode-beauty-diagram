@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.25 — 2026-05-26
+
+### Other
+
+- fix(picker) + fix(embed): auto-refresh existing embeds + display:block
+
 ## 0.1.24 — 2026-05-26
 
 ### Fixes
