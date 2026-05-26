@@ -36,6 +36,39 @@ describe('injectEmbeds', () => {
     expect(out).toContain('<!-- /bd:inline-img -->')
   })
 
+  it('upgrades an existing markdown-form embed to <img> when widthStyle is newly set', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    // First inject with no widthStyle → markdown form
+    const baseline = await injectEmbeds(md, opts)
+    expect(baseline).toMatch(/!\[Diagram 1\]\(/)
+    expect(baseline).not.toContain('<img')
+    // Same hash, same source — but widthStyle is now set. Idempotency
+    // must NOT skip; the marker should be rewritten in HTML form.
+    const upgraded = await injectEmbeds(baseline, { ...opts, widthStyle: 'max-width: 640px' })
+    expect(upgraded).not.toBe(baseline)
+    expect(upgraded).toContain('<img alt="Diagram 1"')
+    expect(upgraded).toContain('style="max-width: 640px"')
+    expect(upgraded).not.toMatch(/!\[Diagram 1\]\(/)
+  })
+
+  it('downgrades an HTML-form embed back to markdown when widthStyle is cleared', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    const withStyle = await injectEmbeds(md, { ...opts, widthStyle: 'max-width: 800px' })
+    expect(withStyle).toContain('<img')
+    // Clear widthStyle → should rewrite back to markdown form
+    const cleared = await injectEmbeds(withStyle, { ...opts, widthStyle: null })
+    expect(cleared).toMatch(/!\[Diagram 1\]\(/)
+    expect(cleared).not.toContain('<img')
+  })
+
+  it('updates the style value when widthStyle changes between runs', async () => {
+    const md = '```mermaid\nA --> B\n```'
+    const first = await injectEmbeds(md, { ...opts, widthStyle: 'max-width: 800px' })
+    const second = await injectEmbeds(first, { ...opts, widthStyle: 'max-width: 480px' })
+    expect(second).toContain('style="max-width: 480px"')
+    expect(second).not.toContain('style="max-width: 800px"')
+  })
+
   it('falls back to markdown image form when widthStyle is empty/null', async () => {
     const md = '```mermaid\nA --> B\n```'
     const out1 = await injectEmbeds(md, { ...opts, widthStyle: null })

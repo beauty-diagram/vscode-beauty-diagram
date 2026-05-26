@@ -62,9 +62,22 @@ export async function injectEmbeds(markdown: string, opts: InjectOptions): Promi
     )
 
     if (markerMatch && markerMatch[3] === hash) {
-      // Idempotent: same hash, leave as-is
-      counter--
-      continue
+      // Hash matches → source/theme/format unchanged. But the marker
+      // body might still be stale if the user changed `bd-width` since
+      // the last inject: an old `![]()` markdown embed has no style
+      // hook and won't shrink to the new max-width. Detect any drift
+      // between the existing embed's inline style and the desired one;
+      // if they agree, the embed is truly idempotent and we skip.
+      const existingBody = markerMatch[2]
+      const existingStyleMatch = existingBody.match(/<img\b[^>]*\bstyle="([^"]*)"/)
+      const existingStyle = existingStyleMatch ? existingStyleMatch[1] : ''
+      const desiredStyle = opts.widthStyle ? escapeHtmlAttr(opts.widthStyle) : ''
+      if (existingStyle === desiredStyle) {
+        counter--
+        continue
+      }
+      // Otherwise fall through — the replace path below rewrites the
+      // marker block with the correct form / style for current settings.
     }
 
     const url = await urlForSource(cleanSource, theme, f.type, opts)
