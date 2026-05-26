@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.27 — 2026-05-26
+
+### Fixes
+
+- **preview**: hide bd-width + close bd-share flash window + block-stack bd-img
+
 ## 0.1.26 — 2026-05-26
 
 ### Fixes
