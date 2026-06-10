@@ -63,15 +63,77 @@
   function restoreRenderedMermaidSources() {
     var els = document.querySelectorAll('.mermaid')
     for (var i = 0; i < els.length; i++) {
-      var raw = els[i].getAttribute('data-vscode-context')
-      if (!raw) continue
-      try {
-        var src = JSON.parse(raw).mermaidSource
-        if (typeof src === 'string' && src) els[i].textContent = src
-      } catch (e) {
-        /* not a mermaid context payload — leave the element alone */
+      var src = savedSourceFor(els[i])
+      if (src) els[i].textContent = src
+    }
+  }
+
+  // ---- self-healing source backup -----------------------------------------
+  // Something in the preview pipeline can empty a rendered .mermaid element
+  // while keeping its attributes (observed in the wild: id retained,
+  // data-vscode-context stripped, content gone — the diagram flashes once
+  // and vanishes). Defend independently of who wipes and how: snapshot each
+  // element's source into our own attribute the first time we see it, and
+  // restore + re-render whenever an element turns up empty.
+
+  var SRC_ATTR = 'data-bd-mermaid-source'
+
+  function savedSourceFor(el) {
+    var saved = el.getAttribute(SRC_ATTR)
+    if (saved) return saved
+    var raw = el.getAttribute('data-vscode-context')
+    if (!raw) return null
+    try {
+      var src = JSON.parse(raw).mermaidSource
+      return typeof src === 'string' && src ? src : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  function snapshotAndHeal() {
+    var els = document.querySelectorAll('.mermaid')
+    var healed = false
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i]
+      var text = (el.textContent || '').trim()
+      var hasSvg = !!el.querySelector('svg')
+
+      if (!el.hasAttribute(SRC_ATTR)) {
+        if (text && !hasSvg && !el.closest('.mermaid-wrapper')) {
+          // Pre-render state (fresh source, not yet inside the mermaid
+          // extension's wrapper) — snapshot it.
+          el.setAttribute(SRC_ATTR, text)
+        } else {
+          // Already rendered — recover the source the mermaid extension
+          // saved into data-vscode-context.
+          var ctxSrc = savedSourceFor(el)
+          if (ctxSrc) el.setAttribute(SRC_ATTR, ctxSrc)
+        }
+      }
+
+      if (!text && !hasSvg) {
+        var src = savedSourceFor(el)
+        if (src) {
+          el.textContent = src
+          healed = true
+        }
       }
     }
+    if (healed) {
+      try { console.debug('[bd] healed wiped mermaid block(s), re-rendering') } catch (e) {}
+      pokeMermaidRenderer()
+    }
+  }
+
+  var healQueued = false
+  function queueSnapshotAndHeal() {
+    if (healQueued) return
+    healQueued = true
+    requestAnimationFrame(function () {
+      healQueued = false
+      snapshotAndHeal()
+    })
   }
 
   // Coalesce multiple failures in one frame into a single re-render poke —
@@ -120,6 +182,7 @@
     var native = document.createElement('div')
     native.className = 'mermaid'
     native.setAttribute('data-bd-injected', '1')
+    native.setAttribute(SRC_ATTR, source) // self-heal backup (see snapshotAndHeal)
     native.textContent = source
 
     var badge = document.createElement('div')
@@ -167,4 +230,16 @@
   // Fresh-source elements (real content updates) carry no
   // data-vscode-context and are left alone, so this is a no-op there.
   window.addEventListener('vscode.markdown.updateContent', restoreRenderedMermaidSources)
+
+  // Self-healing: snapshot sources as soon as elements appear, and revive
+  // any block that gets emptied — regardless of which pipeline wiped it
+  // (event-less init passes, the preview's incremental DOM updater, …).
+  // Steady states produce no heal, so this cannot loop: rendered blocks
+  // have an svg, fresh blocks have text, and a heal that leads to a
+  // successful render ends in a rendered block.
+  snapshotAndHeal()
+  new MutationObserver(queueSnapshotAndHeal).observe(document.body, {
+    childList: true,
+    subtree: true,
+  })
 })()
