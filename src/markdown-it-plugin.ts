@@ -82,11 +82,27 @@ function renderDiagramImg(opts: {
    *  Empty string when the effective width is `'full'` (CSS default
    *  `.bd-img { max-width: 100% }` takes over). */
   widthStyle?: string
+  /** Raw (clean) diagram source for the per-block native-renderer fallback.
+   *  When set (mermaid + fallbackToNativeRenderer on), the img URL gains
+   *  `onfail=status` so the server answers render failures with 422 + a
+   *  NON-IMAGE body (a 4xx with a valid image body still fires `load` —
+   *  browsers decode <img> bodies regardless of HTTP status), and the source
+   *  rides along in `data-bd-source` so preview/bd-native-fallback.js can
+   *  hand the block to VS Code's built-in mermaid renderer on failure.
+   *  Attributes only — fence output must stay a bare <img> (wrapper HTML
+   *  broke the preview pipeline in 0.1.9–0.1.11, see comment above). */
+  fallbackSource?: string
 }): string {
   const style = opts.widthStyle ? ` style="${escapeHtml(opts.widthStyle)}"` : ''
+  const src = opts.fallbackSource
+    ? opts.src + (opts.src.includes('?') ? '&' : '?') + 'onfail=status'
+    : opts.src
+  const fallbackAttr = opts.fallbackSource
+    ? ` data-bd-source="${escapeHtml(opts.fallbackSource)}"`
+    : ''
   return (
-    `<img class="bd-img" src="${escapeHtml(opts.src)}" alt="${opts.alt}" ` +
-    `data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}"${style} />\n`
+    `<img class="bd-img" src="${escapeHtml(src)}" alt="${opts.alt}" ` +
+    `data-bd-source-format="${opts.sourceFormat}" data-bd-mode="${opts.mode}"${style}${fallbackAttr} />\n`
   )
 }
 
@@ -217,6 +233,15 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     const effectiveWidth = resolveEffectiveWidth(pageWidth, settingWidth)
     const widthStyle = widthToInlineStyle(effectiveWidth)
 
+    // Per-block native fallback is mermaid-only (VS Code has no built-in
+    // PlantUML renderer). The actual fallback lives in
+    // preview/bd-native-fallback.js; here we only opt the URL into
+    // detectable failures and carry the source on the img.
+    const fallbackSource =
+      sourceFormat === 'mermaid' && getConfig('fallbackToNativeRenderer')
+        ? cleanSource
+        : undefined
+
     // share mode + extension context wired + cache hit → emit /v1/share/<token>.svg
     // share mode + cache miss → fall through to anonymous and prepend a hint
     //   (the user needs to run `Beauty Diagram: Toggle share mode` to pre-fetch
@@ -232,6 +257,7 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
           sourceFormat,
           mode: 'share',
           widthStyle,
+          fallbackSource,
         })
       }
       // cache miss in share mode — fall through to anonymous; no hint banner
@@ -254,6 +280,7 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
         sourceFormat,
         mode: pageMode,
         widthStyle,
+        fallbackSource,
       })
     }
 

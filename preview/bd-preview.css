@@ -18,3 +18,14 @@
 .bd-img {
   display: block;
 }
+
+/* Status badge under a block that fell back to VS Code's built-in mermaid
+ * renderer (injected by preview/bd-native-fallback.js). Visible by default
+ * on purpose — a silently un-beautified diagram reads as "the plugin is
+ * broken"; the badge says what happened. */
+.bd-fallback-badge {
+  font-size: 0.78em;
+  color: var(--vscode-editorWarning-foreground, #b58a00);
+  opacity: 0.85;
+  margin: 2px 0 10px;
+}

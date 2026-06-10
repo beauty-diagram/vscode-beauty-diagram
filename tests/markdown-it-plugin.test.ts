@@ -40,8 +40,36 @@ describe('bdMarkdownItPlugin', () => {
     const md = new MarkdownIt().use(bdMarkdownItPlugin)
     const html = md.render('```mermaid\nflowchart LR\n  A --> B\n```')
     expect(html).toContain('<img')
-    expect(html).toMatch(/src="https:\/\/api\.beauty-diagram\.com\/v1\/beautify\.svg\?source=[^"]+&amp;theme=classic&amp;sourceFormat=mermaid"/)
+    expect(html).toMatch(/src="https:\/\/api\.beauty-diagram\.com\/v1\/beautify\.svg\?source=[^"]+&amp;theme=classic&amp;sourceFormat=mermaid&amp;onfail=status"/)
     expect(html).toContain('class="bd-img"')
+  })
+
+  it('mermaid img opts into detectable failures and carries the source for native fallback', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\nflowchart LR\n  A --> B\n```')
+    expect(html).toContain('onfail=status')
+    expect(html).toMatch(/data-bd-source="flowchart LR\n {2}A --&gt; B\n"/)
+    // Fence output must stay a bare <img> — no wrapper / sibling markup
+    // (wrapper HTML broke the preview pipeline in 0.1.9–0.1.11). The
+    // fallback structure is injected by preview/bd-native-fallback.js.
+    expect(html.trim()).toMatch(/^<img[^>]*\/>$/)
+  })
+
+  it('does not opt plantuml imgs into onfail (no native plantuml renderer)', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```plantuml\n@startuml\nA --> B\n@enduml\n```')
+    expect(html).not.toContain('onfail=status')
+    expect(html).not.toContain('data-bd-source=')
+  })
+
+  it('omits onfail and data-bd-source when fallbackToNativeRenderer is off', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com', fallbackToNativeRenderer: false })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\nflowchart LR\n  A --> B\n```')
+    expect(html).not.toContain('onfail=status')
+    expect(html).not.toContain('data-bd-source=')
   })
 
   it('honors per-block bd:theme directive', () => {

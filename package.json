@@ -26,7 +26,8 @@
   "contributes": {
     "markdown.markdownItPlugins": true,
     "markdown.previewScripts": [
-      "./preview/hide-bd-share.js"
+      "./preview/hide-bd-share.js",
+      "./preview/bd-native-fallback.js"
     ],
     "markdown.previewStyles": [
       "./preview/bd-preview.css"
@@ -81,6 +82,11 @@
           "type": "boolean",
           "default": true,
           "description": "Render plantuml fences via Beauty Diagram. (VS Code has no built-in plantuml renderer.)"
+        },
+        "beautyDiagram.fallbackToNativeRenderer": {
+          "type": "boolean",
+          "default": true,
+          "description": "When Beauty Diagram cannot render a mermaid block (unsupported syntax, service unreachable), render that block with VS Code's built-in mermaid renderer instead of showing a placeholder image. A badge on the block explains why."
         }
       }
     },
