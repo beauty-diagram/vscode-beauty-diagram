@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.32 — 2026-06-10
+
+### Fixes
+
+- **preview**: self-healing source backup for mermaid blocks wiped by event-less passes
+
 ## 0.1.31 — 2026-06-10
 
 ### Fixes
