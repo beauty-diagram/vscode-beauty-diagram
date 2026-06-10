@@ -49,6 +49,31 @@
     }
   }
 
+  // The mermaid extension's re-render pass is DESTRUCTIVE for
+  // already-rendered blocks: it strips every `.mermaid > svg`, then reads
+  // each element's textContent as the source — but the first render
+  // replaced that content with the SVG markup, so a synthetic re-render
+  // would wipe every previously rendered mermaid block on the page
+  // (VS Code's own dispatches are safe only because a real content update
+  // replaces the DOM with fresh source elements first). The extension
+  // saves the original source into data-vscode-context.mermaidSource on
+  // first render; restoring textContent from it makes the global
+  // re-render lossless and repeatable (verified against the bundled
+  // markdown-preview-out/index.js renderMermaidElement).
+  function restoreRenderedMermaidSources() {
+    var els = document.querySelectorAll('.mermaid')
+    for (var i = 0; i < els.length; i++) {
+      var raw = els[i].getAttribute('data-vscode-context')
+      if (!raw) continue
+      try {
+        var src = JSON.parse(raw).mermaidSource
+        if (typeof src === 'string' && src) els[i].textContent = src
+      } catch (e) {
+        /* not a mermaid context payload — leave the element alone */
+      }
+    }
+  }
+
   // Coalesce multiple failures in one frame into a single re-render poke —
   // the mermaid extension's init() re-scans the whole document each time.
   var pokeQueued = false
@@ -58,6 +83,7 @@
     setTimeout(function () {
       pokeQueued = false
       try {
+        restoreRenderedMermaidSources()
         window.dispatchEvent(new CustomEvent('vscode.markdown.updateContent'))
       } catch (e) {
         /* mermaid extension absent — the raw source div stays visible,
