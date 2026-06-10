@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.31 — 2026-06-10
+
+### Fixes
+
+- **preview**: defensively restore mermaid sources on every updateContent dispatch
+
 ## 0.1.30 — 2026-06-10
 
 ### Fixes
