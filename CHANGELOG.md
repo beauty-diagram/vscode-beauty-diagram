@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.30 — 2026-06-10
+
+### Fixes
+
+- **preview**: restore mermaid sources before re-render poke — synthetic updateContent wiped all rendered blocks
+
 ## 0.1.29 — 2026-06-10
 
 ### Features
