@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.28 — 2026-06-10
+
+### Features
+
+- per-block fallback to VS Code's built-in mermaid renderer on render failure
+
 ## 0.1.27 — 2026-05-26
 
 ### Fixes
