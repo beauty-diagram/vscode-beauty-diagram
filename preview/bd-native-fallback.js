@@ -158,4 +158,13 @@
   window.addEventListener('vscode.markdown.updateContent', function () {
     requestAnimationFrame(sweep)
   })
+
+  // Defensive restore on EVERY updateContent dispatch, whoever fired it.
+  // The mermaid extension's init() only touches the DOM after an
+  // `await registerMermaidAddons()`, so a synchronous restore in any
+  // same-event listener always lands before its destructive svg-strip +
+  // textContent re-read — regardless of listener registration order.
+  // Fresh-source elements (real content updates) carry no
+  // data-vscode-context and are left alone, so this is a no-op there.
+  window.addEventListener('vscode.markdown.updateContent', restoreRenderedMermaidSources)
 })()
