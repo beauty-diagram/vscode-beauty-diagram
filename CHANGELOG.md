@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.29 — 2026-06-10
+
+### Features
+
+- %% bd:exclude directive — opt a block out of Beauty Diagram
+
 ## 0.1.28 — 2026-06-10
 
 ### Features
