@@ -212,3 +212,39 @@ describe('cleanEmbeds', () => {
     expect(out).toContain('bd:inline-img')
   })
 })
+
+describe('bd:exclude in injection', () => {
+  const opts = {
+    theme: 'modern',
+    hasApiKey: false,
+    shareIdForSource: async () => null,
+  }
+
+  it('skips excluded fences — no embed injected', async () => {
+    const md = '```mermaid\n%% bd:exclude\nA --> B\n```\n\nEnd.'
+    const out = await injectEmbeds(md, opts)
+    expect(out).toBe(md)
+  })
+
+  it('still injects non-excluded fences in the same doc', async () => {
+    const md = '```mermaid\n%% bd:exclude\nA --> B\n```\n\n```mermaid\nC --> D\n```'
+    const out = await injectEmbeds(md, opts)
+    expect(out).not.toMatch(/A --> B[\s\S]*?bd:inline-img[\s\S]*?C --> D/)
+    // Exactly one marker, after the second fence
+    expect(out.match(/<!-- bd:inline-img/g)).toHaveLength(1)
+  })
+
+  it('removes a previously injected embed when the fence later adds bd:exclude', async () => {
+    const md = '```mermaid\nA --> B\n```\n\nEnd.'
+    const injected = await injectEmbeds(md, opts)
+    expect(injected).toContain('bd:inline-img')
+    // User adds the exclude directive afterwards
+    const excludedDoc = injected.replace('```mermaid\n', '```mermaid\n%% bd:exclude\n')
+    const out = await injectEmbeds(excludedDoc, opts)
+    expect(out).not.toContain('bd:inline-img')
+    expect(out).toContain('End.')
+    // Original spacing restored — exclude → re-inject after removing the
+    // directive should round-trip
+    expect(out).toBe(md.replace('```mermaid\n', '```mermaid\n%% bd:exclude\n'))
+  })
+})

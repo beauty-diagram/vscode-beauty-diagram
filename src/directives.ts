@@ -16,12 +16,21 @@ const COMMENT_PREFIX: Record<SourceFormat, string> = {
   plantuml: "'",
 }
 
-// Matches the comment-prefix, optional whitespace, bd:key=value, trailing whitespace.
-// The prefix is substituted at call-time.
+// Matches the comment-prefix, optional whitespace, bd:key[=value], trailing
+// whitespace. The value is optional — bare boolean directives like
+// `%% bd:exclude` parse with value 'true'. The prefix is substituted at
+// call-time.
 function makePattern(prefix: string): RegExp {
   // Escape the prefix for use in regex (e.g. `'` is not special but `%%` is not either)
   const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`^${escaped}\\s*bd:(\\w+)=([\\w-]+)\\s*$`)
+  return new RegExp(`^${escaped}\\s*bd:(\\w+)(?:=([\\w-]+))?\\s*$`)
+}
+
+/** Whether the block opted out of Beauty Diagram rendering entirely
+ *  (`bd:exclude` / `bd:exclude=true`). Excluded blocks render via the host's
+ *  native pipeline and are skipped by embed injection. */
+export function isExcluded(overrides: DirectiveOverrides): boolean {
+  return overrides.exclude !== undefined && overrides.exclude !== 'false'
 }
 
 export function parseDirective(sourceFormat: SourceFormat, source: string): DirectiveResult {
@@ -53,7 +62,8 @@ export function parseDirective(sourceFormat: SourceFormat, source: string): Dire
     }
 
     const key = match[1]
-    const value = match[2]
+    // Valueless form (`bd:exclude`) parses as boolean true.
+    const value = match[2] ?? 'true'
     overrides[key] = value
 
     if (newlineIdx === -1) {

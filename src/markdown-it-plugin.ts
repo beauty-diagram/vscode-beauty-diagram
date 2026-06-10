@@ -1,6 +1,6 @@
 import type MarkdownIt from 'markdown-it'
 import { composeUrl } from './url-composer'
-import { parseDirective } from './directives'
+import { isExcluded, parseDirective } from './directives'
 import { parsePageMode } from './share-mode'
 import {
   parsePageWidth,
@@ -206,6 +206,17 @@ export function bdMarkdownItPlugin(md: MarkdownIt): void {
     const { overrides, source: cleanSource } = parseDirective(sourceFormat, token.content)
     const theme = overrides.theme ?? getConfig('defaultTheme')
     const bg = overrides.bg === 'transparent' ? ('transparent' as const) : undefined
+
+    // `%% bd:exclude` — the user opted this block out of Beauty Diagram.
+    // Delegate to the default fence renderer: for mermaid that flows into
+    // the built-in mermaid extension's highlight hook (native render); for
+    // plantuml it stays a plain code block. The directive line rides along
+    // in token.content — it's a comment in both grammars, harmless.
+    if (isExcluded(overrides)) {
+      return defaultFence
+        ? defaultFence(tokens, idx, options, env, self)
+        : self.renderToken(tokens, idx, options)
+    }
 
     // Empty fence (whitespace-only or no content): nothing to render, and the
     // server's POST /v1/share rejects an empty source with 400 invalid_input.

@@ -57,6 +57,18 @@ flowchart LR
 
 For PlantUML, use `' bd:theme=classic` instead.
 
+### Opting a block out entirely
+
+Prefer VS Code's built-in mermaid rendering for a specific diagram? Add `%% bd:exclude` and the extension leaves that block to the built-in renderer — no Beauty Diagram request, and the "Embed share URLs" commands skip it (removing any embed they previously added):
+
+````md
+```mermaid
+%% bd:exclude
+gantt
+  title I like the native gantt
+```
+````
+
 ### Two ways to go watermark-free
 
 The extension offers two distinct features, depending on who you want to see the polished diagrams. Pick the one that matches your intent — they're independent and can be combined.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseDirective } from '../src/directives'
+import { isExcluded, parseDirective } from '../src/directives'
 
 describe('parseDirective', () => {
   it('extracts mermaid theme directive', () => {
@@ -82,6 +82,41 @@ describe('parseDirective', () => {
     const r = parseDirective('mermaid', '%% bd:future=x\nflowchart LR')
     // Must not throw, key is stored, source is stripped
     expect(r.overrides).toHaveProperty('future', 'x')
+    expect(r.source).toBe('flowchart LR')
+  })
+})
+
+describe('bd:exclude', () => {
+  it('parses bare bd:exclude as true', () => {
+    const r = parseDirective('mermaid', '%% bd:exclude\nflowchart LR\n  A --> B')
+    expect(r.overrides.exclude).toBe('true')
+    expect(r.source).toBe('flowchart LR\n  A --> B')
+    expect(isExcluded(r.overrides)).toBe(true)
+  })
+
+  it('parses explicit bd:exclude=true', () => {
+    const r = parseDirective('mermaid', '%% bd:exclude=true\nflowchart LR')
+    expect(isExcluded(r.overrides)).toBe(true)
+  })
+
+  it('bd:exclude=false is not excluded', () => {
+    const r = parseDirective('mermaid', '%% bd:exclude=false\nflowchart LR')
+    expect(isExcluded(r.overrides)).toBe(false)
+  })
+
+  it('absent exclude is not excluded', () => {
+    expect(isExcluded(parseDirective('mermaid', 'flowchart LR').overrides)).toBe(false)
+  })
+
+  it('parses plantuml bare exclude', () => {
+    const r = parseDirective('plantuml', "' bd:exclude\n@startuml\nA --> B\n@enduml")
+    expect(isExcluded(r.overrides)).toBe(true)
+  })
+
+  it('combines with theme directive on separate lines', () => {
+    const r = parseDirective('mermaid', '%% bd:theme=memphis\n%% bd:exclude\nflowchart LR')
+    expect(r.overrides.theme).toBe('memphis')
+    expect(isExcluded(r.overrides)).toBe(true)
     expect(r.source).toBe('flowchart LR')
   })
 })

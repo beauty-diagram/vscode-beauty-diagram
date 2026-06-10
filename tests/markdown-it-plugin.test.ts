@@ -309,3 +309,30 @@ describe('bdMarkdownItPlugin', () => {
     })
   })
 })
+
+describe('bd:exclude', () => {
+  it('delegates excluded mermaid fences to the default renderer (native mermaid path)', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\n%% bd:exclude\nflowchart LR\n  A --> B\n```')
+    expect(html).not.toContain('beautify.svg')
+    expect(html).not.toContain('bd-img')
+    // Default fence renderer output (flows into the built-in mermaid
+    // extension's highlight hook in the real preview)
+    expect(html).toContain('<pre>')
+  })
+
+  it('delegates excluded plantuml fences to the default renderer (plain code block)', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render("```plantuml\n' bd:exclude\n@startuml\nA --> B\n@enduml\n```")
+    expect(html).not.toContain('beautify.svg')
+  })
+
+  it('bd:exclude=false still renders via Beauty Diagram', () => {
+    setConfig({ defaultTheme: 'classic', replaceMermaid: true, handlePlantuml: true, apiBase: 'https://api.beauty-diagram.com' })
+    const md = new MarkdownIt().use(bdMarkdownItPlugin)
+    const html = md.render('```mermaid\n%% bd:exclude=false\nflowchart LR\n  A --> B\n```')
+    expect(html).toContain('beautify.svg')
+  })
+})

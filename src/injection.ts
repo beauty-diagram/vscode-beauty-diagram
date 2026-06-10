@@ -1,5 +1,5 @@
 import { composeUrl } from './url-composer'
-import { parseDirective } from './directives'
+import { isExcluded, parseDirective } from './directives'
 import { shortHash } from './hash'
 import type { SourceFormat } from './types'
 
@@ -87,6 +87,20 @@ export async function injectEmbeds(markdown: string, opts: InjectOptions): Promi
     const markerMatch = afterFence.match(
       /^(\n+)(<!-- bd:inline-img hash=([0-9a-f]{8}) -->[\s\S]*?<!-- \/bd:inline-img -->)/
     )
+
+    // `bd:exclude` — the block opted out of Beauty Diagram. Never inject an
+    // embed for it, and remove any embed a previous run injected (otherwise
+    // preview would render natively while the published artifact still
+    // shows the beautified image — split behavior). markerMatch[0] is
+    // exactly what injection inserted (leading newlines + marker body, no
+    // trailing newline), so slicing it out restores the original spacing.
+    if (isExcluded(overrides)) {
+      if (markerMatch) {
+        out = out.slice(0, f.endIdx) + afterFence.slice(markerMatch[0].length)
+      }
+      counter--
+      continue
+    }
 
     const fullStyle = buildImgStyle(opts.widthStyle)
     const escapedDesiredStyle = fullStyle ? escapeHtmlAttr(fullStyle) : ''
